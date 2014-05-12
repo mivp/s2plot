@@ -1,0 +1,282 @@
+## INSTALL.TXT
+ #
+ # Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ #
+ # This file is part of S2PLOT.
+ #
+ # S2PLOT is free software: you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # S2PLOT is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ #
+ # We would appreciate it if research outcomes using S2PLOT would
+ # provide the following acknowledgement:
+ #
+ # "Three-dimensional visualisation was conducted with the S2PLOT
+ # progamming library"
+ #
+ # and a reference to
+ #
+ # D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ # of the Astronomical Society of Australia, 23(2), 82-93.
+ #
+ # $Id: INSTALL.TXT 5830 2012-11-16 04:48:20Z dbarnes $
+ #
+
+0. WARNING
+^^^^^^^^^^
+
+Please note the information in this file may be out of date.
+
+1. INTRODUCTION
+^^^^^^^^^^^^^^^
+
+S2PLOT is the Swinburne 3d Plotting Library, which is a library for
+simple and efficient display of scientific data plots in 3-dimensions.
+
+S2PLOT provides point, vector, surface and volume plotting routines,
+has axis marking and labelling capabilities, and callback function
+support to enable complex, interactive and dynamic 3d plots
+(eg. time-variable surface functions).  S2PLOT also provides
+billboards, interactive handles, and label generation via FreeType
+fonts and LaTeX.
+
+At the completion of drawing, S2PLOT allows the user to navigate
+freely in and around the 3-d world, using the keyboard and mouse, and
+provides control of perspective, zoom, and rendering mode.  Frames can
+be saved as high-resolution TGA files or the geometry itself can be
+saved in a GEOM-format file for later viewing.  Geometry can also be
+saved to a VRML97-format file for subsequent import to Acrobat 3D or
+conversion to X3D and use in the s2web Flash player. Geometry, and in
+particular advanced visualisations such as surface and volume
+renderings, can also be exported to PRC format and embedded in PDF
+files.
+
+S2PLOT supports monoscopic (normal) displays, and Swinburne's active
+(frame-sequential) and passive (dual-projector) stereoscope displays.
+Anaglyph (red-cyan) stereo and fisheye and dome display support are
+also available.  Only limited device support is available in the
+S2PLOT open source distribution, however.
+
+Use of S2PLOT from C, C++ and FORTRAN is straightforward.  Sample C
+code demonstrating every available S2PLOT function is included with
+the distribution.  An external Python module is available.
+
+S2PLOT is now supplied in source code format. Currently supported*
+architectures & operating systems are as follows, nomenclature being:
+
+  operating_system-compiler_provider-cpu_architecture
+
+  linux-gnu-i386
+  linux-gnu-x86_64
+  darwin-gnu-i386
+  darwin-gnu-x86_64
+
+(*) supported, as in generally work out of the box.  Actual support
+cannot be provided by the developers.
+
+2. PREREQUISITES
+^^^^^^^^^^^^^^^^
+
+2A. S2PLOT provides native C and FORTRAN (77, 90) wrapper interfaces 
+    on the systems listed in the introduction.
+
+2B. Compilers: for precise details of the compilers used to build
+    S2PLOT - and therefore suitable for compiling and linking 
+    S2PLOT programs - see ENVIRONMENT.TXT which provides information
+    on the supplied builds.
+
+    The GNU compilers (http://gcc.gnu.org) are used to build all 
+    systems.  Versions >= 4.3 are recommended.
+
+2C. You will need an OpenGL-compliant library and GLUT (or a
+    100% compatible) library as well as suitable headers (.h files).
+
+    For GNU/Linux systems with NVidia graphics cards, you may find
+    suitable hardware-accelerated support for your card at
+    www.nvidia.com.  The NVidia distribution includes a
+    hardware-accelerated OpenGL library.  If you do not have a
+    supported card, you will need to install Mesa3D, which is a 
+    software equivalent of OpenGL.  Most Linux distributions
+    include packages for installing the GLUT library, and Mesa3D
+    if it is needed.  On Linux systems, you must have the "glx"
+    extension loaded in your XServer for OpenGL graphics to work.
+
+    Apple/OSX includes hardware-accelerated OpenGL support.  It also
+    includes an implementation of GLUT.  The darwin builds of S2PLOT
+    do not require X11.app.
+
+    *** NB. there are many hundreds of variations of hardware and 
+        software.  Helping users to get OpenGL working on their machine
+	is not the role of the S2PLOT developers.  Please discuss this
+	with your system adminstrator.
+
+
+3. INSTALLATION
+^^^^^^^^^^^^^^^
+
+You should have received the file you are now reading as part of a
+bzip2'ed tar file named according to the following pattern:
+
+  s2plot-N.MM.tar.bz2,
+
+where:
+
+	* N  is the major version
+	* MM is the minor version
+
+Unzipping (using bunzip2) and untarring the distribution file/s from
+the same "root" directory will produce a directory named by the
+pattern s2plot-A.BB, containing the S2PLOT distribution.
+
+The recommended installation location is /usr/local, such that the
+directory /usr/local/s2plot-A.BB is produced.  Then a soft-link is
+made /usr/local/s2plot->/usr/local/s2plot-A.BB.  This means that 
+/usr/local/s2plot always refers to the newest version, but older
+versions can be retained and used if necessary.
+
+There are no known impediments to installing S2PLOT somewhere else.
+
+After uncompressing the distribution, check that the definition of 
+S2X11PATH in the file "s2plot.csh" points correctly to the directory
+containing the X-Windows header files and libraries.
+
+Please continue to section 4 and 5 below for configuration and build
+instructions. 
+
+4. USER CONFIGURATION
+^^^^^^^^^^^^^^^^^^^^^
+
+Users must configure their environment to build and/or use S2PLOT.
+All environment variables are described in ENVIRONMENT.TXT, but we
+review the most important settings here:
+
+4A. [REQUIRED] For all users of S2PLOT code, the environment variable
+    S2PATH absolutely postively MUST be set to the installation
+    location!  For the recommended location with soft-link, this means
+    setting S2PATH to "/usr/local/s2plot".  To use a specific version
+    of S2PLOT, this may be changed to "/usr/local/s2plot-A.BB" where
+    the version is specified by A.BB.  Adjust this as necessary for
+    non-standard installations.
+
+4B. [REQUIRED] It is necssary that users set the environment variable
+    S2ARCH to choose their build architecture.  Possible values are
+    listed in ENVIRONMENT.TXT and have been repeated in section 1. of
+    this document.  Take care to differentiate between minus signs and
+    underscores.
+
+4C. [RECOMMENDED] Users will probably find it necessary to configure the
+    dynamic linker on their system to find the S2PLOT library.  On
+    most systems this can be accomplished by adding the string:
+
+    ${S2PATH}/${S2ARCH}
+
+    to the colon-separated environment variable LD_LIBRARY_PATH 
+    (linux) or DYLD_LIBRARY_PATH (darwin).
+
+4D. [RECOMMENDED] Users may add the string ${S2PATH}/scripts to their
+    executable path to make calling the various utility scripts
+    (e.g. 'cbuild.csh') simple.
+
+4E. [RECOMMENDED] Users may add the string ${S2PATH}/${S2ARCH} to their
+    executable path to make calling the sample programs and apps simple.
+
+
+5. BUILDING FROM SOURCE CODE
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+S2PLOT must be built from source code.  
+
+IMPORTANT NOTE: some parts of S2PLOT, specifically some device drivers
+and support for window systems other than GLUT, are closed source.  If
+you build from source, the closed source drivers will be removed
+unless you use the "-n" switch to prevent the build directory from
+being cleaned.  If you inadvertently remove the closed source device 
+driver binaries, you can always retrieve them from the binary
+distribution for the architecture of interest.
+
+To build from source code, ensure you have set the S2PATH and S2ARCH
+environment variables (see above).  Examine the architecture
+configuration file, ${S2PATH}/scripts/${S2ARCH}.in and check that the
+compiler path/s (COMPPATH and FOMPPATH) are appropriately set.  Set
+the S2FREETYPE and S2FREEGLUT variables accordingly (see
+ENVIRONMENT.TXT), and then in the $S2PATH directory simply issue the
+command "./scripts/build.csh".
+
+If build.csh fails, the most likely cause is that configuration
+settings in your environment are incorrect or incompatible with
+S2PLOT, or, the settings as defined in $S2PATH/scripts/$S2ARCH.in are
+not correct for your build system.  Please check carefully that
+compilers are correctly identified, that compile options and flags are
+sensible and appropriate, and that you have set the environment flags 
+correctly as described above in this file.
+
+The build.csh script simply calls a number of other scripts in turn.
+The libraries themselves are built with "build-lib.csh", then the
+applications in the "apps" subdirectory are built with
+"build-apps.csh", then the standalone viewer is built, and finally the
+example codes are compiled and linked against the S2PLOT libraries.
+If you have trouble with "build.csh", it is recommended you first try
+the partial steps in order, before asking for help on the S2PLOT
+Google Group.
+
+6. TESTING
+^^^^^^^^^^
+
+With the S2PLOT library installed, and the configuration as described
+above done, you should be in a position to run the sample programs,
+that are delivered in source code form and as precompiled binaries.
+
+6A. Firstly, test that you can run the programs.  They are found in
+
+    ${S2PATH}/${S2ARCH}.  You should only try to execute the
+    appropriate binaries for your system!  Some of the programs
+    will prompt for the device to use, so be sure to run the binaries
+    from a terminal, rather than double-clicking on them in a Finder
+    (or other file manager) window.
+
+    If you get errors such as:
+
+[Apple/OSX] dyld: ./s2uc3 can't open library: @executable_path/libs2plot.dylib
+
+[GNU/Linux] linux/s2uc1: error while loading shared libraries: libs2plot.so
+
+    then you have encountered a problem with configuration of the
+    dynamic loader and the (DY)LD_LIBRARY_PATH setting.  Please revisit
+    4C. above.
+
+6B. Now try to compile an S2PLOT program.  Copy eg. "s2funxyr.c" from
+    the directory ${S2PATH}/examples to your own directory.  Now do:
+
+    cbuild.csh s2funxyr
+
+    and hopefully an executable binary will be built for you.  Check
+    you can run it.
+
+If you are unable to run or build S2PLOT programs, please check that
+you have set the necessary environment variables.  $S2PATH and $S2ARCH
+are critical.  Please also check that you have compilers and libraries
+installed that are similar if not the same as those described for your
+chosen $S2ARCH in ENVIRONMENT.TXT.  Finally for compilation, if your
+header (include) files and libraries are in non-standard locations,
+you may need to copy cbuild.csh and modify it to suit.
+
+
+7. CLOSING
+^^^^^^^^^^
+
+Thanks for giving S2PLOT a go!  Hopefully you managed to get it
+working and you find it a useful library, and if you do, we encourage
+you to acknowledge the authors by citing our paper/s on S2PLOT and/or
+visualisation.
+
+ - David G. Barnes, September 2012.
+

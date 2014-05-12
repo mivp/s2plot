@@ -1,0 +1,243 @@
+## ENVIRONMENT.TXT
+ #
+ # Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ #
+ # This file is part of S2PLOT.
+ #
+ # S2PLOT is free software: you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # S2PLOT is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ #
+ # We would appreciate it if research outcomes using S2PLOT would
+ # provide the following acknowledgement:
+ #
+ # "Three-dimensional visualisation was conducted with the S2PLOT
+ # progamming library"
+ #
+ # and a reference to
+ #
+ # D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ # of the Astronomical Society of Australia, 23(2), 82-93.
+ #
+ # $Id: ENVIRONMENT.TXT 5815 2012-10-19 04:51:26Z dbarnes $
+ #
+
+======================================================================
+    SUMMARY OF ENVIRONMENT VARIABLES FOR BUILDING AND USING S2PLOT
+======================================================================
+
+**********************************************************************
+REQUIRED (BUILD-RELATED)
+**********************************************************************
+
+S2PATH: full path to S2PLOT directory
+
+**********************************************************************
+RECOMMENDED (BUILD-RELATED)
+**********************************************************************
+
+S2ARCH: Operating system, compiler and architecture specification for
+	compiling and linking S2PLOT programs.  Valid options are as 
+	follows.  If not set, s2plot.csh attempts to figure out S2ARCH,
+	but may fail to do so.
+
+	darwin-gnu-x86_64
+		Build system: Mac OS X 10.6.8 - Snow Leopard
+			      gcc 4.6.0 (*hpc)
+			      Apple Framework OpenGL, GLUT
+		Distributed:  shared and static libraries
+			      dynamic binaries
+		FORTRAN:      gfortran 4.6.0 (*hpc)
+		for PRC:      libharu 2.2.1 (MacPorts)
+
+	darwin-gnu-i386
+		Build system: Mac OS X 10.6.8 - Snow Leopard
+			      gcc 4.2.1 (Apple Inc. build 5658)
+			      Apple Framework OpenGL, GLUT
+		Distributed:  as per darwin-gnu-x86_64
+		FORTRAN:      as per darwin-gnu-x86_64
+		for PRC:      as per darwin-gnu-x86_64
+
+	linux-gnu-x86_64
+		Build system: CentOS release 5.6
+			      Kernel 2.6.18
+                              gcc 4.4.5
+			      libGL.so.295.20
+  			      libglut.so.3.8.0
+	 	Distributed:  shared and static libraries
+			      dynamic binaries
+		FORTRAN:      gfortran 4.4.5
+		for PRC:      libharu 2.2.1
+
+	linux-gnu-i386
+		Build system: as per linux-gnu-x86_64
+	 	Distributed:  as per linux-gnu-x86_64
+		FORTRAN:      as per linux-gnu-x86_64
+		for PRC:      as per linux-gnu-x86_64
+
+	 	*hpc = from hpc.sourceforge.net
+					      
+S2SHARED: Set to "no" or "yes" to indicate preference for static or 
+          dynamic linking of binaries.
+
+
+**********************************************************************
+OPTIONAL (BUILD-RELATED)
+**********************************************************************
+
+S2FREEGLUT: Set to "no" or "yes" to choose whether the re-entrant 
+	    "s2disp" function will be used on Linux systems that use
+	    the freeglut library.  NB. only works on Linux systems with 
+	    freeglut version >= 2.2.0.
+
+S2FREETYPE: Set to "no" or "yes" to choose whether the freetype2 
+	    extensions will be linked in with programs.
+	    Freetype2 is assumed to be installed in the following 
+	    base directories:
+	    	Mac OS X: /usr/X11R6 (ie. installed with Apple X)
+	    	Linux:    /usr
+            If you have freetype2 installed somewhere else you may need
+	    to modify your s2plot.csh or ${S2ARCH}.in file.
+
+S2MESHLIB: Only set this if recommended by your MirrorDome supplier.
+
+S2EXTRAINC: Additional compiler flags for cbuild.csh and ccbuild.csh
+	    scripts, typically used to provide additional include paths
+            for compilating S2PLOT programs.
+
+S2EXTRALIB: Additional flags for cbuild.csh and ccbuild.csh scripts,
+	    typically used to provide additiona library search paths
+	    and libraries for linking S2PLOT programs.
+
+S2PLOT_PRCDRIVER: The base name of the PRC export dynamically-loadable
+	          module.  Needed to build and/or use the module.  This
+		  should always be set to "s2prcwriter".
+
+**********************************************************************
+OPTIONAL (RUNTIME-RELATED)
+**********************************************************************
+
+S2PATH: full path to S2PLOT directory
+
+S2PLOT_WIDTH: Provide initial width (in pixels) of S2PLOT display 
+	      windows.  If not given, width is by default 800 pixels.
+
+S2PLOT_HEIGHT: Provide initial height (in pixels) of S2PLOT display
+	       windows.  If not given, height is by default 3/4 of
+	       width.
+
+S2PLOT_MESHFILE: Only set this if recommended by your MirrorDome 
+		 supplier.
+
+S2PLOT_DEV: Set this to choose your default S2PLOT output device.
+	    Only relevant when programs specify an empty device string,
+	    or prompt on the terminal for the device choice.
+
+S2PLOT_TEXPATH: Set this to provide an "external" path to texture files,
+		colormap files and LaTeX template files.  When using 
+		textures / colormaps / LaTeX templates in S2PLOT, the 
+		following strategy is used to find named files:
+
+		1. if name begins with "." or "/", look for the precisely
+		   named file and nowhere else.
+
+		OTHERWISE
+
+		2. first look in the current working directory
+		   then look in $S2PLOT_TEXPATH if it is defined
+		   then look in $S2PATH/textures
+
+		3. on failure:
+		     for textures: load a "red X" texture for use
+		     for colormaps: load a colormap that has three colors
+				    (red, green then blue)
+		     for LaTeX templates: fail on LaTeX generation and
+					  load a "red X" texture for use
+
+S2PLOT_LATEXBIN: Set this to the fully-qualified path of the LaTeX binary
+		 (latex) if you want to use LaTeX features in S2PLOT.
+		 If your latex binary is in a standard path location, eg.
+		 /usr/bin, then this won't be necessary.
+
+S2PLOT_DVIPNGBIN: Set this to the fully-qualified path of the DVI to PNG
+		  conversion binary (dvipng) if you want to use LaTeX
+		  features in S2PLOT.  If your dvipng binary is in a 
+		  standard path location, eg. /usr/bin, then this won't
+		  be required.
+
+S2PLOT_IMPATH: Set this to the path containing your ImageMagick binaries.
+	       Without this setting, texturise script/s and LaTeX support
+	       may fail silently.
+
+S2PLOT_FADETIME: Set this to control the fade-in and fade-out time (in
+		 seconds) of S2PLOT programs.  The default is to fade-in 
+	         and fade-out over approximately 0.2 seconds.
+
+S2PLOT_RUNTIME: If set, S2PLOT programs will be forcibly quit after this
+	 	period in seconds.  The S2PLOT_RUNTIME period *does not*
+		include the S2PLOT_FADETIME period at start and end of
+		the program.
+
+S2PLOT_EVENTFILE: 
+		If set, this is the name of a file containing events that
+		are pushed into the S2PLOT event stream.  Currently only
+		simple (ASCII code) keypresses are supported.  Zero time
+		commences at the end of the fade-in time.
+
+S2PLOT_X1, S2PLOT_X2, S2PLOT_Y1, S2PLOT_Y2:
+		In range [0,1], these environment variables can be used
+	  	to constrain the area of screen used for S2PLOT graphics.
+		Typically these would be used in concert with S2PLOT_BGIMG
+		to provide a full-screen background image, eg. from 
+		Powerpoint, then draw S2PLOT graphics in only a particular 
+		region.
+
+S2PLOT_BGIMG:	Filename of a background image to use instead of clearing
+		the screen.
+
+S2PLOT_INTERSCANBUMP: 
+		If scan-line interleaved stereo is being used, bump the
+		first line down the screen by one row, thus flipping the 
+		left and right lines in the display.  Only useful when 
+		fullscreen windows are being created, or windows are known
+		to be created at a particular position on the screen.
+
+S2PLOT_INTERSCANATI:
+		If you have an ATI card (eg. Radeon) and you wish to use
+		the /S2INTER device, you will need to set this environment
+		variable to "yes".  This enables a work-around for the fact
+		that the ATI OpenGL driver does not allow toggling of the
+		MULTISAMPLE state of the graphics pipeline.  Ordinarily this
+		capability is required for the /S2INTER device.
+
+S2PLOT_REMOTEPORT:
+		If set, then S2PLOT will listen on the provided port 
+		number for remote control commands.  The text strings 
+		received can be processed by S2PLOT, and/or forwarded
+		to the callback registered with s2srcb.
+
+S2PLOT_PRCDRIVER:    
+		If set, then S2PLOT will search for a loadable module
+		called ${S2PLOT_PRCDRIVER}.so (in $S2PATH/$S2ARCH) at
+		runtime when the user requests PRC output (typically
+		by pressing Shift-P in an interactive S2PLOT session).
+		The S2PLOT PRC driver module is distributed and built
+		separately to S2PLOT.
+
+S2PLOT_ESCQUIT: If set, S2PLOT programs can be quit by hitting the ESC
+		key alone, without requiring Shift-ESC.
+
+S2PLOT_PRCDRIVER: See above RECOMMENDED (BUILD-RELATED) section.
+
+S2INSTALLPATH:  If set, S2PLOT user build scripts (e.g. cbuild.csh)
+                will install binaries at this location.
+

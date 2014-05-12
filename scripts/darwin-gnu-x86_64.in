@@ -1,0 +1,152 @@
+## darwin-gnu-x86_64.in
+ #
+ # Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ #
+ # This file is part of S2PLOT.
+ #
+ # S2PLOT is free software: you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # S2PLOT is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ #
+ # We would appreciate it if research outcomes using S2PLOT would
+ # provide the following acknowledgement:
+ #
+ # "Three-dimensional visualisation was conducted with the S2PLOT
+ # progamming library"
+ #
+ # and a reference to
+ #
+ # D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ # of the Astronomical Society of Australia, 23(2), 82-93.
+ #
+ # $Id$
+ #
+
+set COMPPATH="/usr/local/bin"
+set FOMPPATH=${COMPPATH}
+set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src -m64 -DS2DARWIN"
+
+set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall "
+#echo " * * * DEBUG BUILD * * *"
+#set COMMFLAGS="${BASEFLAGS} -g -Wall"
+
+set S2OSTYPE="darwin"
+set S2COMPILER="${COMPPATH}/gcc -c ${COMMFLAGS}"
+set S2CCMPILER="${COMPPATH}/g++ -c ${COMMFLAGS}"
+set S2FOMPILER="${FOMPPATH}/gfortran -c ${COMMFLAGS}"
+set S2CLINKER="${COMPPATH}/gcc ${COMMFLAGS}"
+set S2CCINKER="${COMPPATH}/g++ ${COMMFLAGS}"
+set S2FLINKER="${FOMPPATH}/gfortran ${COMMFLAGS}"
+#set S2FTDIR="/usr/X11R6"
+set S2FTDIR="/opt/local"
+set S2HARUDIR="/opt/local"
+
+set S2COMPILER="${S2COMPILER} -DS2DARWIN -DS2USEARRAYS"
+set S2COMPILER="${S2COMPILER} -DS2_3D_TEXTURES"
+
+set S2MODCMPLR="${COMPPATH}/gcc -c -I${S2PATH}/src -DBUILDING_S2PLOT -DS2DARWIN ${COMMFLAGS}"
+set S2MODMAKER="${COMPPATH}/gcc -bundle -undefined dynamic_lookup ${COMMFLAGS}"
+
+if ($S2SHARED == yes) then
+
+  set S2ARBLIBEXT="dylib"
+  set S2ARBLIBCTR='${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -headerpad_max_install_names -o ${S2ARBLIBNAME}'
+
+  set S2LIBCOMPILER="${S2COMPILER} -fno-common "
+  set S2LIBNAME="libs2plot.dylib"
+  set S2LIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2LIBNAME} -headerpad_max_install_names -o ${S2LIBNAME}"
+
+  set S2GLUTWINNAME="libs2winglut.dylib"
+  set S2GLUTWINLIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2GLUTWINNAME} -headerpad_max_install_names -o ${S2GLUTWINNAME}"
+
+  set S2MESHSTUBNAME="libs2meshstub.dylib"
+  set S2MESHSTUBLIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2MESHSTUBNAME} -headerpad_max_install_names -o ${S2MESHSTUBNAME}"
+  set S2FREEMESHNAME="libs2freemesh.dylib"
+  set S2FREEMESHLIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2FREEMESHNAME} -headerpad_max_install_names -o ${S2FREEMESHNAME}"
+  set S2LOCKEDMESHNAME="libs2lockedmesh.dylib"
+  set S2LOCKEDMESHLIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2LOCKEDMESHNAME} -headerpad_max_install_names -o ${S2LOCKEDMESHNAME}"
+
+  set S2FTNAME="libs2freetype.dylib"
+  set S2FTLIBCTR="${S2CLINKER} ${DLARCHFLAGS} -dynamiclib -undefined dynamic_lookup -install_name ${S2PATH}/${S2KERNEL}/${S2FTNAME} -headerpad_max_install_names -o ${S2FTNAME}"
+
+  set S2LIBINDEX=":"
+
+else
+
+  set S2ARBLIBEXT="a"
+  set S2ARBLIBCTR='ar ruc ${S2ARBLIBNAME}'
+
+  set S2LIBCOMPILER="${S2COMPILER}"
+  set S2LIBNAME="libs2plot.a"
+  set S2LIBCTR="ar ruc ${S2LIBNAME}"
+
+  set S2GLUTWINNAME="libs2winglut.a"
+  set S2GLUTWINLIBCTR="ar ruc ${S2GLUTWINNAME}"
+
+  set S2MESHSTUBNAME="libs2meshstub.a"
+  set S2MESHSTUBLIBCTR="ar ruc ${S2MESHSTUBNAME}"
+  set S2FREEMESHNAME="libs2freemesh.a"
+  set S2FREEMESHLIBCTR="ar ruc ${S2FREEMESHNAME}"
+  set S2LOCKEDMESHNAME="libs2lockedmesh.a"
+  set S2LOCKEDMESHLIBCTR="ar ruc ${S2LOCKEDMESHNAME}"
+
+  set S2FTNAME="libs2freetype.a"
+  set S2FTLIBCTR="ar ruc ${S2FTNAME}"
+	
+  set S2LIBINDEX="ranlib"
+
+
+endif
+
+set SWLINKS=""
+if ($S2SHARED == yes) then
+  set MLLINKS="-ls2meshstub"
+  if ($S2MESHLIB == free) then
+    set MLLINKS="-ls2freemesh"
+  else if ($S2MESHLIB == locked) then
+    set MLLINKS="-ls2lockedmesh -lmapFile"
+    set MLLINKS="-Wl,-framework,IOKit,-framework,Carbon ${MLLINKS}"
+  endif
+  if ($S2WINLIB == glut) then
+    set SWLINKS="-ls2winglut"
+  endif
+
+else
+
+  set MLLINKS="${S2PATH}/${S2ARCH}/libs2meshstub.a"
+  if ($S2MESHLIB == free) then
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2freemesh.a"
+  else if ($S2MESHLIB == locked) then
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2lockedmesh -lmapFile"
+    set MLLINKS="-Wl,-framework,IOKit,-framework,Carbon ${MLLINKS}"
+  endif
+  if ($S2WINLIB == glut) then
+    set SWLINKS="${S2PATH}/${S2ARCH}/libs2winglut.a"
+  endif
+
+endif
+
+set MLPLINKS="${MLLINKS}"
+
+set GLLINKS="-Wl"
+if ($S2WINLIB == glut) then
+  set GLLINKS="${GLLINKS},-framework,GLUT"
+endif
+set GLLINKS="${GLLINKS},-framework,OpenGL,-framework,Foundation,-framework,ApplicationServices,-framework,Accelerate"
+
+# fix for Mac OS X 10.5 which has a bug in ld requiring the following:
+set tmp=`uname -r | cut -d "." -f 1`
+if ($tmp == "9") then
+  set GLLINKS="$GLLINKS -Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
+endif 
+
+set XLINKPATH=" "

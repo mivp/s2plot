@@ -1,0 +1,77 @@
+/* xs2tp.c
+ *
+ * Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ *
+ * This file is part of S2PLOT.
+ *
+ * S2PLOT is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * S2PLOT is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ *
+ * We would appreciate it if research outcomes using S2PLOT would
+ * provide the following acknowledgement:
+ *
+ * "Three-dimensional visualisation was conducted with the S2PLOT
+ * progamming library"
+ *
+ * and a reference to
+ *
+ * D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ * of the Astronomical Society of Australia, 23(2), 82-93.
+ *
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "s2plot.h"
+
+/* Global variales used in callback */ 
+int master_panel = 0;			/* Default ID of main panel */
+int slave_panel;			/* ID of newly created panel */
+
+void cb(double *t, int *kc)
+{
+   static int lkc = 0;			/* Keep count of keypress state */
+   if (*kc == 1) {
+      xs2lpc(master_panel, slave_panel);	/* Link panels together */
+   } else if ((*kc > 1) && (*kc != lkc)) {
+      xs2tp(slave_panel);		/* Toggle panel visiblity */
+   }
+
+   lkc = *kc;				/* Update count of keypress state */
+}
+
+
+int main(int argc, char *argv[])
+{
+   s2opend("/s2mono", argc, argv);             	/* Open in mono mode */
+   s2swin(-1.,1., -1.,1., -1.,1.);              /* Set the window coordinates */
+   s2box("BCDET",0,0,"BCDET",0,0,"BCDET",0,0);  /* Draw coordinate box */
+   
+   xs2mp(master_panel, 0.0, 0.5, 0.5, 1.0);	/* Move to top left */
+
+   slave_panel = xs2ap(0.5, 0.0, 1.0, 0.5);	/* Create panel in bottom right */
+   xs2cp(slave_panel);				/* Choose this panel */
+   s2swin(-2.,2., -2.,2., -2.,2.);              /* Set the window coordinates */
+   s2box("BCDE",0,0,"BCDE",0,0,"BCDE",0,0);  	/* Draw coordinate box */
+  
+   xs2cp(master_panel);				/* Go back to main panel */
+   cs2scb(cb);					/* Install dynamic callback */
+
+   fprintf(stderr,"Press <tab> to switch between panels\n");
+   fprintf(stderr,"Press <spacebar> to link cameras together - cannot be undone\n");
+   fprintf(stderr,"Futher presses of <spacebar> toggle panel visiblity\n");
+
+   s2show(1);                                   /* Open the s2plot window */
+
+   return 1;
+}

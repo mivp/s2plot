@@ -1,0 +1,116 @@
+## CHANGES.TXT
+ #
+ # Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ #
+ # This file is part of S2PLOT.
+ #
+ # S2PLOT is free software: you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # S2PLOT is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ #
+ # We would appreciate it if research outcomes using S2PLOT would
+ # provide the following acknowledgement:
+ #
+ # "Three-dimensional visualisation was conducted with the S2PLOT
+ # progamming library"
+ #
+ # and a reference to
+ #
+ # D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ # of the Astronomical Society of Australia, 23(2), 82-93.
+ #
+ # $Id: CHANGES.TXT 5799 2012-10-09 02:29:33Z dbarnes $
+ #
+
+======================================================================
+    SUMMARY OF S2PLOT CHANGES
+======================================================================
+
+New in version 3.2 (since 3.1)
+
+* GPL source release
+
+* Directory reorganisation (requiring change to user's PATH variable)
+
+* Removal of xrw2pdf application (to be released as a separate
+  "product")
+
+
+
+New in version 3.1 (since 3.0)
+
+* S2PLOT PRC export module added
+
+* new functions:
+
+  . functions to retrieve pointers to all the callback functions added
+
+
+New in version 3.0 (since 2.8)
+
+* major overhaul of code to split apart user-space functions from
+  drawing functions, enabling future iOS version of S2PLOT
+
+* complete sample code in $S2PATH/functions
+
+* xrw2pdf application added: for quick conversion from xrw volume
+  format to PRC format (for including in PDF via pdflatex) and 
+  quick-look PDF.  See apps/xrw2pdf/README.
+
+======================================================================
+
+New in version 2.8 (since 2.4)
+
+* new environment variables:
+
+  S2PLOT_ESCQUIT
+  S2PLOT_PRCDRIVER
+
+* new functions:
+
+  ns2ssq, ns2qsq - set/query surface quality
+
+  ns2cvra - create volume rendering with function controlling alpha''
+
+  ns2svas, ns2qvas, ns2sevas - set/query alpha scaling mode for volume 
+	 rendering and isosurfacing
+
+  ns2vf3na - transparent 3-vertex facets with normals
+
+  ds2vbbpr - billboard with aspect ratio, offset, and rotation about view
+	 direction
+
+  ds2protect, ds2unprotect, ds2isprotected - protect/unprotect dynamic
+	 geometry and query protect status
+
+  ss2scaf - set camera position, up vector, view direction AND focus
+	 (rotate-about) point in one call
+
+  ss2qpr - query point to rotate about
+
+  s2funuva - parametric function with function controlling surface opacity
+
+  ns2vf3nca - 3 vertex facet with per-vertex normals, colours and opacity / alpha
+
+* bug fixes / improvements:
+
+  repaired creation of volume rendering and isosurface objects from FORTRAN
+
+  modified calculation of bounding box for initial camera position and removed
+    "invisible" points previously used for this purpose
+
+  fixed ss2qar function which was returning screen aspect ratio not window aspect ratio
+
+  various misc fixes to build scripts
+
+* removal of darwin-gnu-univ architecture
+

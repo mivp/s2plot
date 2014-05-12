@@ -1,0 +1,41 @@
+VIEW={Front perspective} %1=home
+  COO=0.0 0.0 0.0
+  C2C=0.0 0.0 1.0
+  ROO=4.94975
+END
+VIEW={Back perspective} %2
+  COO=0.0 0.0 0.0
+  C2C=0.0 0.0 -1.0
+  ROO=4.94975
+  ROLL=180.0
+END
+VIEW={Left perspective} %3
+  COO=0.0 0.0 0.0
+  C2C=-1.0 0.0 0.0
+  ROO=4.94975
+  ROLL=-90.0
+END
+VIEW={Right perspective} %4
+  COO=0.0 0.0 0.0
+  C2C=1.0 0.0 0.0
+  ROO=4.94975
+  ROLL=90.0
+END
+VIEW={Top perspective} %5
+  COO=0.0 0.0 0.0
+  C2C=0.0 1.0 0.0
+  ROO=4.94975
+END
+VIEW={Bottom perspective} %6
+  COO=0.0 0.0 0.0
+  C2C=0.0 -1.0 0.0
+  ROO=4.94975
+END
+VIEW={Oblique perspective} %7
+  COO=0.0 0.0 0.0
+  C2C=-1.0 1.0 -1.0
+  ROO=4.94975
+  ROLL=-60.0
+END
+
+

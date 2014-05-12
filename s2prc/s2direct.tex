@@ -1,0 +1,68 @@
+%% s2direct.tex
+ %
+ % Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ %
+ % This file is part of S2PLOT.
+ %
+ % S2PLOT is free software: you can redistribute it and/or modify it
+ % under the terms of the GNU General Public License as published by
+ % the Free Software Foundation, either version 3 of the License, or
+ % (at your option) any later version.
+ %
+ % S2PLOT is distributed in the hope that it will be useful, but
+ % WITHOUT ANY WARRANTY; without even the implied warranty of
+ % MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ % General Public License for more details.
+ %
+ % You should have received a copy of the GNU General Public License
+ % along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ %
+ % We would appreciate it if research outcomes using S2PLOT would
+ % provide the following acknowledgement:
+ %
+ % "Three-dimensional visualisation was conducted with the S2PLOT
+ % progamming library"
+ %
+ % and a reference to
+ %
+ % D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ % of the Astronomical Society of Australia, 23(2), 82-93.
+ %
+ % $Id: s2direct.tex,v 1.7 2011/05/19 00:50:36 dbarnes Exp $
+ %
+
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage[3D]{movie15}
+\parindent=0pt
+\parskip=1.2\baselineskip
+
+\begin{document}
+\section*{S2PLOT PRC template figure}
+
+PRC files exported from S2PLOT
+(\url{http://astronomy.swin.edu.au/s2plot}, version 3.2 or higher) (by
+pressing {\tt Shift-P}) can be embedded as 3-d figures in PDF
+documents prepared with {\tt pdflatex}.  Please cite our work (Barnes
+et al., 2006, PASA, 23, 82; or Barnes \& Fluke, 2008, New Astronomy,
+13, 599) if you use S2PLOT for your research or publications.
+\begin{figure}[h]
+\caption{Your caption here.  PRC output produced with S2PLOT (Barnes et al., 2006, PASA, 23(2), 82-93).}
+\begin{center}
+  \vspace{0.12in}
+  \includemovie[label=s2direct,
+    poster,
+    3Dcoo=0.007216811180114746 -0.04447293281555176 -0.0332721471786499,
+    3Droo=6.881564140319824,
+    3Dviews2=s2views.txt,
+    3Djscript=s2plot-prc.js,
+    controls,
+    3Dlights=CAD,
+    3Dbg=0 0 0,
+    autoplay,
+    3Drender=Solid,
+  ]{1.0\linewidth}{0.8\linewidth}{s2direct.prc}\\
+\end{center}
+\end{figure}
+
+\end{document}

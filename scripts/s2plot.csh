@@ -76,7 +76,7 @@ set S2X11PATH=/usr/X11R6
 ## CHANGES BELOW HERE ARE NOT GENERALLY NEEDED FOR END-USERS        ##
 ######################################################################
 
-set S2VERSION="3.2.1"
+set S2VERSION="3.4.0"
 
 ######################################################################
 

@@ -2581,10 +2581,14 @@ BITMAP4 *_s2priv_redXtexture(int w, int h) {
 /* 3d version */
 BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d) {
   BITMAP4 *ptr;
-  int i, j, k, idx;
-  if ((ptr = (BITMAP4 *)malloc(w * h * d * sizeof(BITMAP4))) == NULL) {
+  if ((ptr = (BITMAP4 *)malloc((long)w * (long)h * (long)d * (long)sizeof(BITMAP4))) == NULL) {
     _s2error("(internal)", "failed to allocated internal texture memory");
   }
+  fprintf(stderr, "memset 0\n");
+  memset(ptr, 0, (long)w * (long)h * (long)d * (long)sizeof(BITMAP4));
+  return ptr;
+
+  long i, j, k, idx;
   idx = 0;
 
   for (k = 0; k < d; k++) {
@@ -5628,6 +5632,8 @@ unsigned int ss2c3dt(int width, int height, int depth) {
   BITMAP4 *bitmap = _s2priv_redXtexture3d(width, height, depth);
   // use mipmaps
   return _s2priv_setupTexture3d(width, height, depth, bitmap, 1);
+  // no mipmaps
+  //return _s2priv_setupTexture3d(width, height, depth, bitmap, 0);
 }
 #endif
 /* delete a texture by id */

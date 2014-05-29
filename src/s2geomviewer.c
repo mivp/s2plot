@@ -511,7 +511,7 @@ void _s2priv_ss2pt(unsigned int itextureID, int usemipmaps) {
       if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
 	// desaturate the bitmap data
 	int i, j, k;
-	int idx = 0;
+	long idx = 0;
 	float sum;
 	for (i = 0; i < width; i++) {
 	  for (j = 0; j < height; j++) {
@@ -592,7 +592,7 @@ unsigned int _s2priv_setupTexture(int width, int height,
   if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
     // desaturate the bitmap data
     int i, j;
-    int idx = 0;
+    long idx = 0;
     float sum;
     for (i = 0; i < width; i++) {
       for (j = 0; j < height; j++, idx++) {
@@ -653,7 +653,7 @@ unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
   if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
     // desaturate the bitmap data
     int i, j, k;
-    int idx = 0;
+    long idx = 0;
     float sum;
     for (i = 0; i < width; i++) {
       for (j = 0; j < height; j++) {

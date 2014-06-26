@@ -184,11 +184,11 @@ endif
 echo Removing objects ...
 rm -rf $S2OBJECTS
 
-# these device drivers are closed source (not distributed with S2PLOT)
+# "standalone" device drivers
 foreach driver (s2interstereo s2anaglyph s2fishdome s2warpstereo)
-  if (-e ../closed/devices/${driver}.c) then
+  if (-e ../src/devices/${driver}.c) then
     echo Building device driver ${driver} ...
-    $S2MODCMPLR ../closed/devices/${driver}.c
+    $S2MODCMPLR ../src/devices/${driver}.c
     if ($driver == s2warpstereo) then
       $S2MODMAKER -o ${driver}.so ${driver}.o -L. ${MLLINKS} 
     else

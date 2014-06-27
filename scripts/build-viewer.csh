@@ -84,7 +84,7 @@ set S2OBJECTS="${S2OBJECTS} geomviewer.o"
 echo "Linking S2PLOT viewer utility ..."
 
 # this is the normal one
-$S2CLINKER -o s2view geomviewer.o -L. ${S2LINKS} ${MLLINKS} ${SWLINKS} ${GLLINKS} -L${S2X11PATH}/lib${S2LBITS} ${S2FORMSLINK} -lXpm -lX11 ${IMATH} -lm ${XLINKPATH} 
+$S2CLINKER -o s2view geomviewer.o -L. ${S2LINKS} ${MLLINKS} ${SWLINKS} ${GLLINKS} -L${S2X11PATH}/lib${S2LBITS} ${S2FORMSLINK} -lXpm -lX11 ${IMATH} -lm ${XLINKPATH}  -ldl
 
 if ($S2KERNEL == darwin && $S2SHARED == yes) then
   echo "Modifying dynamic library path ..."

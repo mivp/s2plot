@@ -5631,9 +5631,9 @@ unsigned int ss2ct(int width, int height) {
 unsigned int ss2c3dt(int width, int height, int depth) {
   BITMAP4 *bitmap = _s2priv_redXtexture3d(width, height, depth);
   // use mipmaps
-  return _s2priv_setupTexture3d(width, height, depth, bitmap, 1);
+  //return _s2priv_setupTexture3d(width, height, depth, bitmap, 1);
   // no mipmaps
-  //return _s2priv_setupTexture3d(width, height, depth, bitmap, 0);
+  return _s2priv_setupTexture3d(width, height, depth, bitmap, 0);
 }
 #endif
 /* delete a texture by id */

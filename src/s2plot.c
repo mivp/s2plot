@@ -6542,17 +6542,18 @@ void ns2texmesh(int inverts, XYZ *iverts,
   texmesh_base->verts = (XYZ *)malloc(inverts * sizeof(XYZ));
   int i;
   for (i = 0; i < inverts; i++) {
-    texmesh_base->verts[i].x = iverts[i].x; //_S2WORLD2DEVICE(iverts[i].x, _S2XAX);
-    texmesh_base->verts[i].y = iverts[i].y; //_S2WORLD2DEVICE(iverts[i].y, _S2YAX);
-    texmesh_base->verts[i].z = iverts[i].z; //_S2WORLD2DEVICE(iverts[i].z, _S2ZAX);
+    // was commented and worked but scaling in PDF odd - definitely should use S2WORLD2DEVICE
+    texmesh_base->verts[i].x = /*iverts[i].x;*/ _S2WORLD2DEVICE(iverts[i].x, _S2XAX);
+    texmesh_base->verts[i].y = /*iverts[i].y;*/ _S2WORLD2DEVICE(iverts[i].y, _S2YAX);
+    texmesh_base->verts[i].z = /*iverts[i].z;*/ _S2WORLD2DEVICE(iverts[i].z, _S2ZAX);
   }
 
   texmesh_base->nnorms = innorms;
   texmesh_base->norms = (XYZ *)malloc(innorms * sizeof(XYZ));
   for (i = 0; i < innorms; i++) {
-    texmesh_base->norms[i].x = inorms[i].x; // _S2WORLD2DEVICE_SO(inorms[i].x, _S2XAX);
-    texmesh_base->norms[i].y = inorms[i].y; //_S2WORLD2DEVICE_SO(inorms[i].y, _S2YAX);
-    texmesh_base->norms[i].z = inorms[i].z; //_S2WORLD2DEVICE_SO(inorms[i].z, _S2ZAX);
+    texmesh_base->norms[i].x = /*inorms[i].x;*/ _S2WORLD2DEVICE_SO(inorms[i].x, _S2XAX);
+    texmesh_base->norms[i].y = /*inorms[i].y;*/ _S2WORLD2DEVICE_SO(inorms[i].y, _S2YAX);
+    texmesh_base->norms[i].z = /*inorms[i].z;*/ _S2WORLD2DEVICE_SO(inorms[i].z, _S2ZAX);
     //Normalise(&(texmesh_base->norms[i]));
   }
 

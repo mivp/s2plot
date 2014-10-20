@@ -7643,6 +7643,15 @@ void *cs2qcb(void) {
   return (void *)_s2_callback;
 }
 
+/* register the function that draws direct OpenGL graphics when called */
+void cs2socb(void *icbfn) {
+  _s2_oglcb = (void (*)())icbfn;
+}
+void *cs2qocb(void) {
+  return (void *)_s2_oglcb;
+}
+
+
 /* set the drag handle callback function */
 void cs2sdhcb(void *icbfn) {
   _s2_draghandle_callback = (void (*)(int *, XYZ *))icbfn;

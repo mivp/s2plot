@@ -7147,6 +7147,7 @@ void *cs2qncb(void) {
   return (void *)_s2_numcb;
 }
 
+#if (0) // moved to s2plot.c
 /* register the function that draws direct OpenGL graphics when called */
 void cs2socb(void *icbfn) {
   _s2_oglcb = (void (*)())icbfn;
@@ -7154,6 +7155,7 @@ void cs2socb(void *icbfn) {
 void *cs2qocb(void) {
   return (void *)_s2_oglcb;
 }
+#endif
 
 /* register the function that handles remote control commands */
 void cs2srcb(void *rcbfn) {

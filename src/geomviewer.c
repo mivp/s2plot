@@ -268,7 +268,7 @@ unsigned int _s2priv_setupTexture(int width, int height,
 unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
 				  BITMAP4 *bitmap, int usemipmaps);
 BITMAP4 *_s2priv_redXtexture(int w, int h);
-BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d);
+BITMAP4 *_s2priv_blankTexture3d(int w, int h, int d);
 #endif
 
 #if defined(BUILDING_S2PLOT)
@@ -10625,7 +10625,6 @@ unsigned int _s2priv_setupTexture(int width, int height,
 /* 3d version */
 unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
 				    BITMAP4 *bitmap, int usemipmaps) {
-
 #if defined(BUILDING_S2PLOT)
   if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
     // desaturate the bitmap data

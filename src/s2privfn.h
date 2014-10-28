@@ -109,7 +109,7 @@ extern "C" {
   
   /* create a red-X bitmap for texture use */
   BITMAP4 *_s2priv_redXtexture(int w, int h);
-  BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d);
+  BITMAP4 *_s2priv_blankTexture3d(int w, int h, int d);
   
   /* setup a texture from a bitmap of given width and height */
   unsigned int _s2priv_setupTexture(int width, int height, BITMAP4 *bitmap,

@@ -31,13 +31,12 @@
  # $Id: linux-gnu-x86_64.in 5793 2012-10-09 02:06:45Z dbarnes $
  #
 
-#set COMPPATH="/usr/local/gcc/4.4.5/bin"
-set COMPPATH="/usr/bin"
+set COMPPATH="/usr/local/gcc/4.8.2/bin"
 set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src -m64"
 
 set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall"
-# echo " * * * DEBUG BUILD * * *"
-# set COMMFLAGS="${BASEFLAGS} -ggdb -Wall"
+#echo " * * * DEBUG BUILD * * *"
+#set COMMFLAGS="${BASEFLAGS} -ggdb -Wall"
 
 set S2OSTYPE="linux"
 set S2COMPILER="${COMPPATH}/gcc -c ${COMMFLAGS}"

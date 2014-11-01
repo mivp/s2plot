@@ -75,7 +75,7 @@ void _s2warnk(char key, char *messg, ...);
 void HandleDisplay(void);
 
 void CreateOpenGL(void);
-void MakeGeometry(int, int);
+void MakeGeometry(int, int, int);
 void MakeLighting(void);
 void MakeMaterial(void);
 void HandleReshape(int,int);

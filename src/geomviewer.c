@@ -544,7 +544,7 @@ int main(int argc,char **argv) {
   options.camerahome = camera;
   if (strlen(viewname) > 0)
     ReadViewFile(viewname);
-  MakeGeometry(TRUE, FALSE);
+  MakeGeometry(TRUE, FALSE, 'c');
   if (options.autopilot) 
     options.autopilot = AutoPilot(0,autopilotname);
   
@@ -1008,7 +1008,7 @@ void HandleDisplay(void) {
 		  camera.vu.x,camera.vu.y,camera.vu.z);
 	MakeLighting();
 	MakeMaterial();
-	MakeGeometry(FALSE, FALSE);
+	MakeGeometry(FALSE, FALSE, 'c');
 	DrawExtras();
 	glFlush();
 	if (options.stereo == ACTIVESTEREO)
@@ -1243,7 +1243,7 @@ void CreateProjection(int eye) {
       geometry).
    Otherwise draw immediately,
 */
-void MakeGeometry(int doupdate, int doscreen) {
+void MakeGeometry(int doupdate, int doscreen, int eye) {
 
   int i,j;
   XYZ linelist[300*MAXLABELLEN];
@@ -1304,7 +1304,7 @@ void MakeGeometry(int doupdate, int doscreen) {
       
       // s2 change: allow dynamic geometry
       _s2_startDynamicGeometry(FALSE);
-      MakeGeometry(FALSE, doscreen);
+      MakeGeometry(FALSE, doscreen, eye);
       _s2_endDynamicGeometry();
       
       return;
@@ -1312,7 +1312,7 @@ void MakeGeometry(int doupdate, int doscreen) {
 #endif
   } else if (!_s2_dynamicEnabled && doscreen) {
     _s2_startDynamicGeometry(FALSE);
-    MakeGeometry(FALSE, doscreen);
+    MakeGeometry(FALSE, doscreen, eye);
     _s2_endDynamicGeometry();
   }
 
@@ -2151,7 +2151,7 @@ void MakeGeometry(int doupdate, int doscreen) {
     if (!_s2_retain_lists) {
       // s2 change: allow dynamic geometry
       _s2_startDynamicGeometry(FALSE);
-      MakeGeometry(FALSE, doscreen);
+      MakeGeometry(FALSE, doscreen, eye);
       _s2_endDynamicGeometry();
     } else if (doupdate) {
       glEndList();
@@ -2165,13 +2165,16 @@ void MakeGeometry(int doupdate, int doscreen) {
     if (options.debug) {
       fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
     }
-    MakeGeometry(FALSE, doscreen);
+    MakeGeometry(FALSE, doscreen, eye);
     
     _s2_endDynamicGeometry();
     return;
   }
 #endif
   
+// CONDITIONAL added DGB 20141101 - probably redundant as 
+// s2priv_drawBillboards probably checks
+if (_s2_dynamicEnabled) {
   /* draw the billboards */
   if (nbboard) {
     _s2priv_drawBillboards();
@@ -2188,11 +2191,16 @@ void MakeGeometry(int doupdate, int doscreen) {
     // draw screen handles
     _s2priv_drawHandles(TRUE);
   }
-  
+ }
+
+// CONDITIONAL added DGB 20141101 - definitely needed, oglcb was
+// being called three times per eye/screen.
+if (_s2_dynamicEnabled && !doscreen) {
   /* and call the direct OpenGL callback if one is present */
   if (_s2_oglcb) {
-    _s2_oglcb();
+    _s2_oglcb(&eye);
   }
+ }
   
   /* call the entry/exit fade in routine */
   //_s2_fadeinout();
@@ -2963,7 +2971,7 @@ void HandleMouse(int button,int state,int x,int y) {
 		  camera.vu.x,camera.vu.y,camera.vu.z);
 	MakeLighting();
 	MakeMaterial();
-	MakeGeometry(FALSE, FALSE);
+	MakeGeometry(FALSE, FALSE, 'c');
 	DrawExtras();
 	
 	if ((nhits = glRenderMode(GL_RENDER)) < 0) {
@@ -4456,7 +4464,7 @@ void DeleteGeometry(void)
       ballt = NULL;
    }
 
-   MakeGeometry(TRUE, FALSE);
+   MakeGeometry(TRUE, FALSE, 'c');
 }
 
 
@@ -6695,7 +6703,7 @@ void s2show(int iinteractive) {
     }
     */
 
-    MakeGeometry(TRUE, FALSE);
+    MakeGeometry(TRUE, FALSE, 'c');
 #if defined(BUILDING_S2PLOT)
   }
     xs2cp(waspanel);
@@ -7150,7 +7158,7 @@ void *cs2qncb(void) {
 #if (0) // moved to s2plot.c
 /* register the function that draws direct OpenGL graphics when called */
 void cs2socb(void *icbfn) {
-  _s2_oglcb = (void (*)())icbfn;
+  _s2_oglcb = (void (*)(int *))icbfn;
 }
 void *cs2qocb(void) {
   return (void *)_s2_oglcb;
@@ -8623,7 +8631,7 @@ void s2show_thr(int iinteractive) {
     if (_s2_cameraset) {
       _s2priv_CameraSet();
     }
-    MakeGeometry(TRUE, FALSE);
+    MakeGeometry(TRUE, FALSE, 'c');
 #if defined(BUILDING_S2PLOT)
   }
   xs2cp(waspanel);
@@ -8863,7 +8871,7 @@ void drawView(char *projinfo, double camsca) {
     MakeMaterial();
     
 
-    MakeGeometry(FALSE, FALSE);
+    MakeGeometry(FALSE, FALSE, projinfo[0]);
     
 #if defined(BUILDING_S2PLOT)
     /* draw the dynamic geometry */
@@ -8873,7 +8881,7 @@ void drawView(char *projinfo, double camsca) {
     glDisable(GL_LIGHTING);
     int tmp = options.rendermode;
     options.rendermode = SHADE_FLAT;
-    MakeGeometry(FALSE, TRUE);
+    MakeGeometry(FALSE, TRUE, projinfo[0]);
     glEnable(GL_LIGHTING);
     options.rendermode = tmp;
     strcpy(_s2_doingScreen, "");

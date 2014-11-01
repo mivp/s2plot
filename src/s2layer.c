@@ -610,7 +610,7 @@ void finals2plot(void) {
          }
          */
         
-        MakeGeometry(TRUE, FALSE);
+        MakeGeometry(TRUE, FALSE, 'c');
 #if defined(BUILDING_S2PLOT)
     }
     xs2cp(waspanel);
@@ -690,7 +690,7 @@ void CreateProjection(int eye);
 void HandleDisplay(void);
 void MakeLighting(void);
 void MakeMaterial(void);
-void MakeGeometry(int doupdate, int doscreen);
+void MakeGeometry(int doupdate, int doscreen, int eye);
 void drawView(char *projinfo, double camsca);
 
 
@@ -1007,7 +1007,7 @@ void HandleDisplay(void) {
                          camera.vu.x,camera.vu.y,camera.vu.z);
                 MakeLighting();
                 MakeMaterial();
-                MakeGeometry(FALSE, FALSE);
+                MakeGeometry(FALSE, FALSE, 'c');
                 DrawExtras();
                 glFlush();
                 if (options.stereo == ACTIVESTEREO)
@@ -1251,7 +1251,7 @@ void drawView(char *projinfo, double camsca) {
         
         //fprintf(stderr, "camera.vp = %f %f %f\n", camera.vp.x, camera.vp.y, camera.vp.z);
         
-        MakeGeometry(FALSE, FALSE);
+        MakeGeometry(FALSE, FALSE, projinfo[0]);
         
 #if defined(BUILDING_S2PLOT)
 
@@ -1262,7 +1262,7 @@ void drawView(char *projinfo, double camsca) {
         glDisable(GL_LIGHTING);
         int tmp = options.rendermode;
         options.rendermode = SHADE_FLAT;
-        MakeGeometry(FALSE, TRUE);
+        MakeGeometry(FALSE, TRUE, projinfo[0]);
         glEnable(GL_LIGHTING);
         options.rendermode = tmp;
         strcpy(_s2_doingScreen, "");
@@ -1446,7 +1446,7 @@ void _s2priv_pushPanelToGlobals(int panelid);
  geometry).
  Otherwise draw immediately,
  */
-void MakeGeometry(int doupdate, int doscreen) {
+void MakeGeometry(int doupdate, int doscreen, int eye) {
   //fprintf(stderr, "in MakeGeometry: doscreen=%d, dynamic=%d\n", doscreen, _s2_dynamicEnabled);
     int i = 0,j = 0;
     XYZ linelist[300*MAXLABELLEN];
@@ -1507,7 +1507,7 @@ void MakeGeometry(int doupdate, int doscreen) {
             
             // s2 change: allow dynamic geometry
             _s2_startDynamicGeometry(FALSE);
-            MakeGeometry(FALSE, doscreen);
+            MakeGeometry(FALSE, doscreen, eye);
             _s2_endDynamicGeometry();
             
             return;
@@ -1515,7 +1515,7 @@ void MakeGeometry(int doupdate, int doscreen) {
 #endif
     } else if (!_s2_dynamicEnabled && doscreen) {
         _s2_startDynamicGeometry(FALSE);
-        MakeGeometry(FALSE, doscreen);
+        MakeGeometry(FALSE, doscreen, eye);
         _s2_endDynamicGeometry();
     }
     
@@ -2271,7 +2271,7 @@ void MakeGeometry(int doupdate, int doscreen) {
             if (!_s2_retain_lists) {
                 // s2 change: allow dynamic geometry
                 _s2_startDynamicGeometry(FALSE);
-                MakeGeometry(FALSE, doscreen);
+                MakeGeometry(FALSE, doscreen, eye);
                 _s2_endDynamicGeometry();
             } else if (doupdate) {
                 glEndList();
@@ -2285,7 +2285,7 @@ void MakeGeometry(int doupdate, int doscreen) {
             if (options.debug) {
                 fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
             }
-            MakeGeometry(FALSE, doscreen);
+            MakeGeometry(FALSE, doscreen, eye);
             
             _s2_endDynamicGeometry();
             return;
@@ -2293,6 +2293,9 @@ void MakeGeometry(int doupdate, int doscreen) {
 #endif
         
 #if defined(FIXME)
+// CONDITIONAL added DGB 20141101 - probably redundant as 
+// s2priv_drawBillboards probably checks
+if (_s2_dynamicEnabled) {
         /* draw the billboards */
         if (nbboard) {
             _s2priv_drawBillboards();
@@ -2309,13 +2312,17 @@ void MakeGeometry(int doupdate, int doscreen) {
             // draw screen handles
             _s2priv_drawHandles(TRUE);
         }
+ }
 #endif
         
+// CONDITIONAL added DGB 20141101 - definitely needed, oglcb was
+// being called three times per eye/screen.
+if (_s2_dynamicEnabled && !doscreen) {
         /* and call the direct OpenGL callback if one is present */
         if (_s2_oglcb) {
             _s2_oglcb();
         }
-        
+ }        
         /* call the entry/exit fade in routine */
         //_s2_fadeinout();
 #endif

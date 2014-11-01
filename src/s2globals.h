@@ -253,7 +253,7 @@ extern int _s2_retain_lists;
 extern void (*_s2_numcb)(int *);
 
 /* pointer to opengl callback function */
-extern void (*_s2_oglcb)();
+extern void (*_s2_oglcb)(int *);
 
 /* pointer to remote control callback function */
 extern int (*_s2_remcb)(char *);

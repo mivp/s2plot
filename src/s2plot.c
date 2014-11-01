@@ -7607,7 +7607,7 @@ void *cs2qcb(void) {
 
 /* register the function that draws direct OpenGL graphics when called */
 void cs2socb(void *icbfn) {
-  _s2_oglcb = (void (*)())icbfn;
+  _s2_oglcb = (void (*)(int *))icbfn;
 }
 void *cs2qocb(void) {
   return (void *)_s2_oglcb;

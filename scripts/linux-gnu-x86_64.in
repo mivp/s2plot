@@ -31,7 +31,7 @@
  # $Id: linux-gnu-x86_64.in 5793 2012-10-09 02:06:45Z dbarnes $
  #
 
-set COMPPATH="/usr/local/gcc/4.8.2/bin"
+set COMPPATH="/usr/local/gcc/4.9.1/bin"
 set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src -m64"
 
 set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall"
@@ -46,7 +46,8 @@ set S2CLINKER="${COMPPATH}/gcc ${COMMFLAGS}"
 set S2CCINKER="${COMPPATH}/g++ ${COMMFLAGS}" 
 set S2FLINKER="${COMPPATH}/gfortran ${COMMFLAGS}"
 set S2FTDIR="/usr"
-set S2HARUDIR="/usr/local/libharu/2.2.1"
+set S2HARUDIR="/usr/local/libharu/2.3.0"
+
 
 set S2LBITS="64"
 #set fext="f90"

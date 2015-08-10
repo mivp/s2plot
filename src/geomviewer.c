@@ -6247,6 +6247,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
    /* remote handler */
    _s2_remcb = NULL;
+   _s2_remcb_sock = NULL;
    _s2_skiplock = 0;
    _s2_remoteport = 0;
    
@@ -6499,6 +6500,10 @@ void *remote_thread_sub(void *data) {
 	if (_s2_remcb) {
 	  consumed = _s2_remcb(rgot);
 	}
+
+	if (_s2_remcb_sock) {
+      consumed = _s2_remcb_sock(rgot, sockout);
+    }
 
 	if (!consumed) {
 
@@ -7171,6 +7176,9 @@ void cs2srcb(void *rcbfn) {
 }
 void *cs2qrcb(void) {
   return (void *)_s2_remcb;
+}
+void cs2srcb_sock(void *rcbfn) {
+  _s2_remcb_sock = (int (*)(char *))rcbfn;
 }
 
 

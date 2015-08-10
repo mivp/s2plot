@@ -7178,7 +7178,7 @@ void *cs2qrcb(void) {
   return (void *)_s2_remcb;
 }
 void cs2srcb_sock(void *rcbfn) {
-  _s2_remcb_sock = (int (*)(char *))rcbfn;
+  _s2_remcb_sock = (int (*)(char *, FILE *))rcbfn;
 }
 
 

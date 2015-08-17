@@ -46,6 +46,7 @@
 
 void s2winInit(int *argc, char **argv) {
   glutInit(argc, argv);
+glutInitWindowPosition(0, 0);
 }
 
 void s2winMainLoop(void) {

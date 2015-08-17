@@ -258,6 +258,9 @@ extern void (*_s2_oglcb)(int *);
 /* pointer to remote control callback function */
 extern int (*_s2_remcb)(char *);
 
+/* pointer to remote control callback function which also sends information back to client*/
+extern int (*_s2_remcb_sock)(char *, FILE *);
+
 /* this can be set to 1 in very special circumstances to avoid
  * waiting for a mutex lock in threads */
 extern int _s2_skiplock; 

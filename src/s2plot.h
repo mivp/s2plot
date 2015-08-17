@@ -1141,6 +1141,7 @@ void *cs2qocb(void);
  */
 void cs2srcb(void *remcb);
 void *cs2qrcb();
+void cs2srcb_sock(void *remcb);
 
 /* Add a handle. */
 void ds2ah(XYZ iP, float size, COLOUR icol, COLOUR ihilite,

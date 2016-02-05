@@ -1023,9 +1023,10 @@ BITMAP4 *ReadTGATexture(char *fname,int *w,int *h)
    }
 
    /* Actually read the texture */
-	if (TGA_Read(fptr,ptr,&width,&height) != 0) {
-		fprintf(stderr,"TGA file read error\n");
-	}
+   int fl = TGA_Read(fptr,ptr,&width,&height);
+   if (fl != 0) {
+     fprintf(stderr,"TGA file read error %d\n", fl);
+   }
 
    fclose(fptr);
    return(ptr);

@@ -208,7 +208,7 @@ extern "C" {
   void (*_s2_numcb)(int *);
   
   /* pointer to opengl callback function */
-  void (*_s2_oglcb)();
+  void (*_s2_oglcb)(int *);
   
   /* pointer to remote control callback function */
   int (*_s2_remcb)(char *);

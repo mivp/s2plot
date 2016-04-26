@@ -7800,6 +7800,14 @@ float ss2qca(void) {
   return camera.aperture;
 }
 
+float ss2qcfl(void) {
+  return camera.focallength;
+}
+
+float ss2qces(void) {
+  return camera.eyesep;
+}
+
 /* set spin speed */
 void ss2sss(float spd) {
   options.interactspeed = spd;

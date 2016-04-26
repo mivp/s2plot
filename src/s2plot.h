@@ -1422,6 +1422,10 @@ void ss2ucf(void);
 void ss2sca(float aperture);
 float ss2qca(void);
 
+/* query the camera focallength / eyesep */
+float ss2qcfl(void);
+float ss2qces(void);
+
 /* Query the camera focus point, and whether it is explicitly set.
  * The return value of set indicates whether focus is "set" or
  * "unset" - see functions ss2scf and ss2ucf.  The position of the

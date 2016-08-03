@@ -1144,13 +1144,15 @@ void HandleDisplay(void) {
 	glViewport(
 		   -i*options.screenwidth,-j*options.screenheight,
 		   options.windowdump*options.screenwidth,options.windowdump*options.screenheight);
-	glMatrixMode(GL_MODELVIEW);
 	glDrawBuffer(GL_BACK_LEFT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#if !defined(S2MPICH)
+	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
 		  camera.focus.x,camera.focus.y,camera.focus.z,
 		  camera.vu.x,camera.vu.y,camera.vu.z);
+#endif
 	MakeLighting();
 	MakeMaterial();
 	MakeGeometry(FALSE, FALSE, 'c');
@@ -1302,81 +1304,6 @@ void HandleDisplay(void) {
   MTX_ULCK(&mutex);
 }
 
-#if defined(S2_NO_S2GEOMVIEWER)
-/*
-	Create the projection matrix
-	Support perspective and parallel.
-	eye is left or right for stereo
-*/
-void CreateProjection(int eye) {
-  double dist,ratio,radians=0,wd2,ndfl;
-  double left,right,top,bottom,near,far;
-  
-  // Sort out near and far cutting plane for ultra stereo
-#if defined(BUILDING_S2PLOT)
-  near = VectorLength(pmin,pmax) / 10;
-  //near *= 0.01;
-  near /= _s2_nearfar_expand;
-  far = MAX(camera.focallength,VectorLength(pmin,pmax)) * 20. * 
-    _s2_nearfar_expand;
-  if (options.stereo != NOSTEREO) {
-    near = camera.focallength / (5. * _s2_nearfar_expand);
-  }
-#else
-  near = VectorLength(pmin,pmax) / 100;
-  far  = MAX(camera.focallength,VectorLength(pmin,pmax)) * 20;
-  if (options.stereo != NOSTEREO)
-    near = camera.focallength / 5;
-#endif
-  
-  // Window width to height ratio 
-  ratio = options.screenwidth / (double)(options.screenheight);
-#if defined(BUILDING_S2PLOT)
-  ratio *= (_s2_panels[_s2_activepanel].x2 - _s2_panels[_s2_activepanel].x1) / (_s2_panels[_s2_activepanel].y2 - _s2_panels[_s2_activepanel].y1);
-#endif
-  if ((options.stereo == DUALSTEREO) || (options.stereo == WDUALSTEREO)) {
-    ratio /= 2;
-  } else if (options.stereo == TRIOSTEREO) {
-    ratio /= 3;
-  }
-  radians = DTOR * camera.aperture / 2;
-  
-  switch (options.projectiontype) {
-  case PERSPECTIVE:
-    wd2     = near * tan(radians);
-    ndfl    = near / camera.focallength;
-    if (eye == 'l') {
-      left  = - ratio * wd2 + 0.5 * camera.eyesep * ndfl;
-      right =   ratio * wd2 + 0.5 * camera.eyesep * ndfl;
-    } else if (eye == 'r') {
-      left  = - ratio * wd2 - 0.5 * camera.eyesep * ndfl;
-      right =   ratio * wd2 - 0.5 * camera.eyesep * ndfl;
-    } else {
-      left  = - ratio * wd2;
-      right =   ratio * wd2;
-    }
-    top    =   wd2;
-    bottom = - wd2;
-    glFrustum(left,right,bottom,top,near,far);
-    break;
-  case ORTHOGRAPHIC:
-    dist = VectorLength(camera.vp,camera.pr);
-    left   = - dist * ratio * tan(radians);
-    right  =   dist * ratio * tan(radians);
-    bottom = - dist * tan(radians);
-    top    =   dist * tan(radians);
-    glOrtho(left,right,bottom,top,near,far);
-    //fprintf(stderr, "XXX S2PLOT HACKED FOR GLORTHO!!! XXX\n");
-    //glOrtho(0,1,0,1,0,1);
-    break;
-  }
-
-#if defined(BUILDING_S2PLOT)
-    _s2_save_near = near;
-    _s2_save_far = far;
-#endif
-}
-#endif
 
 /*
    Create the geometry
@@ -3108,12 +3035,14 @@ void HandleMouse(int button,int state,int x,int y) {
 	glGetIntegerv(GL_VIEWPORT,viewport); /* Get the viewport bounds */
 	gluPickMatrix(x,viewport[3]-y,3.0,3.0,viewport);
 	CreateProjection('c');
-	glMatrixMode(GL_MODELVIEW);
 	glDrawBuffer(GL_BACK_LEFT);
+#if !defined(S2MPICH)
+	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
 		  camera.focus.x,camera.focus.y,camera.focus.z,
 		  camera.vu.x,camera.vu.y,camera.vu.z);
+#endif
 	MakeLighting();
 	MakeMaterial();
 	MakeGeometry(FALSE, FALSE, 'c');
@@ -6627,6 +6556,10 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    }
    fclose(config);
 
+   // based on s2config file, you now need to set a suitable initial
+   // object translation. Let's just hardcode for now at 3 metres on z.
+   _s2_object_trans.z = -3.0;
+
 #endif
 
    /* everything seems to be ok */
@@ -9048,6 +8981,7 @@ void drawView(char *projinfo, double camsca) {
     
 #if !defined(S2MPICH)
     glLoadIdentity();
+    fprintf(stderr, "s2LookAt\n");
     s2LookAt(camera.vp.x + camoff.x,
 	      camera.vp.y + camoff.y,
 	      camera.vp.z + camoff.z,
@@ -9114,6 +9048,7 @@ void drawView(char *projinfo, double camsca) {
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
+#if !defined(S2MPICH)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     s2LookAt(camera.vp.x,
@@ -9123,6 +9058,7 @@ void drawView(char *projinfo, double camsca) {
 	      camera.vp.y + camera.vd.y,
 	      camera.vp.z + camera.vd.z,
 	      camera.vu.x,camera.vu.y,camera.vu.z);
+#endif
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
     glGetDoublev(GL_PROJECTION_MATRIX, _s2_dragproj);
     glGetIntegerv(GL_VIEWPORT, _s2_dragview);
@@ -9180,8 +9116,9 @@ void handleView(int msx, int msy) {
     gluPickMatrix(msx, options.screenheight-msy, 3.0, 3.0, viewport);
 
     CreateProjection('c');
-    glMatrixMode(GL_MODELVIEW);
     glDrawBuffer(GL_BACK_LEFT);
+#if !defined(S2MPICH)
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     s2LookAt(camera.vp.x,
 	      camera.vp.y,
@@ -9190,7 +9127,7 @@ void handleView(int msx, int msy) {
 	      camera.vp.y + camera.vd.y,
 	      camera.vp.z + camera.vd.z,
 	      camera.vu.x,camera.vu.y,camera.vu.z);
-    
+#endif
     glInitNames();
 
     // prepare for selection rather than drawing

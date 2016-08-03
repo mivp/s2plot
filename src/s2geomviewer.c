@@ -235,6 +235,7 @@ void kooimaProjection(XYZ pa, XYZ pb, XYZ pc, XYZ pe, float n, float f) {
 	eye is left or right for stereo
 */
 void CreateProjection(int eye) {
+  //fprintf(stderr, "Create Projection:\n");
   double dist,ratio,radians=0,wd2,ndfl;
   double left,right,top,bottom,near,far;
   

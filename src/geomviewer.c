@@ -916,7 +916,7 @@ void HandleDisplay(void) {
     if (_s2mpi_world_rank == 0) {
       // master: describe the camera
       //fprintf(stderr, "Master describing the camera ...\n");
-      
+      /*
       camdat[0] = camera.vp.x;
       camdat[1] = camera.vp.y;
       camdat[2] = camera.vp.z;
@@ -943,22 +943,26 @@ void HandleDisplay(void) {
       camdat[17] = camera.eyesep;
       camdat[18] = camera.speed;
       camdat[19] = camera.fishrotate;
-      
-      obj_trans_dat[0] = _s2_object_trans.x;
-      obj_trans_dat[1] = _s2_object_trans.y;
-      obj_trans_dat[2] = _s2_object_trans.z;
+      */
+      //obj_trans_dat[0] = _s2_object_trans.x;
+      //obj_trans_dat[1] = _s2_object_trans.y;
+      //obj_trans_dat[2] = _s2_object_trans.z;
 
     }
 
     //fprintf(stderr, "broadcasting ...\n");
-    MPI_Bcast((void *)camdat, 20, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast((void *)obj_trans_dat, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    //MPI_Bcast((void *)camdat, 20, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
+    //MPI_Bcast((void *)obj_trans_dat, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
     //fprintf(stderr, "broadcast done!\n");
+
 
     if (_s2mpi_world_rank != 0) {
       // slave: take on the broadcast camera
       //fprintf(stderr, "Slave settin the received camera...\n");
-      
+      /* 
       camera.vp.x = camdat[0];
       camera.vp.y = camdat[1]; 
       camera.vp.z = camdat[2]; 
@@ -985,10 +989,10 @@ void HandleDisplay(void) {
       camera.eyesep = camdat[17];
       camera.speed = camdat[18];
       camera.fishrotate = camdat[19];
-      
-      _s2_object_trans.x = obj_trans_dat[0];
-      _s2_object_trans.y = obj_trans_dat[1];
-      _s2_object_trans.z = obj_trans_dat[2];
+      */
+      //_s2_object_trans.x = obj_trans_dat[0];
+      //_s2_object_trans.y = obj_trans_dat[1];
+      //_s2_object_trans.z = obj_trans_dat[2];
 
     }
 #endif 
@@ -2972,14 +2976,20 @@ void TranslateCamera(double ix,double iy,int source)
 #elif defined(BUILDING_VIEWER)
 	  delta = options.interactspeed * VectorLength(pmin,pmax) / 500.0;
 #endif
-	else
+	  else
 		delta = options.deltamove;
 	if (source == MOUSECONTROL)
 		delta /= 2;
+
+	if (options.interaction == OBJECT) {
+	  // factor of 50. is to match speed mulitplier in calls to FlyCamera
+	  TranslateInCameraFrame(50. * ix, 50. * iy, 0.0);
+	  return;
+	}
 	
 	/* Move the camera horizontally */
 	vp.x += iy * vu.x * delta;
-   vp.y += iy * vu.y * delta;
+	vp.y += iy * vu.y * delta;
 	vp.z += iy * vu.z * delta;
 	if (options.projectiontype == PERSPECTIVE) {
    	pr.x += iy * vu.x * delta;

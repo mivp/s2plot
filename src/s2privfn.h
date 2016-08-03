@@ -97,6 +97,9 @@ extern "C" {
 
   void _s2priv_list_devices();
 
+  // translate scene in camera frame
+  void TranslateInCameraFrame(double,double,double);
+
   void CameraHome(int mode);
   void RotateCamera(double,double,double,int); 
   void FlyCamera(double);

@@ -911,6 +911,7 @@ void HandleDisplay(void) {
     //double fishrotate;    /* Rotate fisheye camera    */
     //} CAMERA;
     double camdat[20];
+    double obj_trans_dat[3];
     
     if (_s2mpi_world_rank == 0) {
       // master: describe the camera
@@ -942,11 +943,16 @@ void HandleDisplay(void) {
       camdat[17] = camera.eyesep;
       camdat[18] = camera.speed;
       camdat[19] = camera.fishrotate;
+      
+      obj_trans_dat[0] = _s2_object_trans.x;
+      obj_trans_dat[1] = _s2_object_trans.y;
+      obj_trans_dat[2] = _s2_object_trans.z;
 
     }
 
     //fprintf(stderr, "broadcasting ...\n");
     MPI_Bcast((void *)camdat, 20, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void *)obj_trans_dat, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     //fprintf(stderr, "broadcast done!\n");
 
     if (_s2mpi_world_rank != 0) {
@@ -980,36 +986,9 @@ void HandleDisplay(void) {
       camera.speed = camdat[18];
       camera.fishrotate = camdat[19];
       
-#if (0) // this code for modifying the view of the different slaves is now DEPRECATED
-      // as we are replacing this with a config file and new code to compute the projection
-      // for off axis asymmetric frustums. See CreateProjection.
-
-      //fprintf(stderr, "receive done.\n");
-
-      // rotate viewdir as an experiment
-      //XYZ tmp = RotateY(camera.vd, M_PI/2.0);
-      //camera.vd = tmp;
-      
-      // Calculate the new view direction 
-      // DGB: ASSUMPTION vu = y axis
-
-      float ratio = 4. / 3.; // default S2PLOT screen ratio
-      float v_theta_2 = M_PI/4.0 / 2.0; // default camera aperture 45deg in VERTICAL plane
-      float h_theta_2 = atan(ratio * tan(v_theta_2));
-      //fprintf(stderr, "v_theta_2 = %f, h_theta_2 = %f, ratio*v_theta_2 = %f\n",
-      //	      v_theta_2, h_theta_2, ratio * v_theta_2);
-      XYZ tmp = RotateY(camera.vd, (double)(_s2mpi_world_rank) * 2.0 * h_theta_2); 
-      Normalise(&tmp);
-      camera.vd = tmp;
-
-      // Determine the new up vector 
-      // hasn't changed due to above assumption
-
-      /* Update the focal point */
-      camera.focus.x = camera.vp.x + camera.focallength * camera.vd.x;
-      camera.focus.y = camera.vp.y + camera.focallength * camera.vd.y;
-      camera.focus.z = camera.vp.z + camera.focallength * camera.vd.z;
-#endif
+      _s2_object_trans.x = obj_trans_dat[0];
+      _s2_object_trans.y = obj_trans_dat[1];
+      _s2_object_trans.z = obj_trans_dat[2];
 
     }
 #endif 
@@ -2697,7 +2676,7 @@ void _s2_process_key(unsigned char key,int x, int y, int modifiers)
     break;
   case '-':									/* Move backward or increase speed */
   case '_':
-    if (options.interaction == INSPECT) {
+    if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined(BUILDING_S2PLOT)
       FlyCamera(-50.0 * ss2qcs());
 #else
@@ -2715,7 +2694,7 @@ void _s2_process_key(unsigned char key,int x, int y, int modifiers)
     break;
   case '+':									/* Move forward or increase speed */
   case '=':
-    if (options.interaction == INSPECT) {
+    if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined (BUILDING_S2PLOT)
       FlyCamera(50.0 * ss2qcs());
 #else 
@@ -3212,7 +3191,7 @@ void HandleMouse(int button,int state,int x,int y) {
 	{
       
 	/* Move backward or increase speed */
-	if (options.interaction == INSPECT) {
+	if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined(BUILDING_S2PLOT)
 	  FlyCamera(-50.0 * ss2qcs());
 #else
@@ -3256,7 +3235,7 @@ void HandleMouse(int button,int state,int x,int y) {
 	{
       
 	/* Move forward or increase speed */
-	if (options.interaction == INSPECT) {
+	  if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined (BUILDING_S2PLOT)
 	  FlyCamera(50.0 * ss2qcs());
 #else 
@@ -3368,7 +3347,7 @@ void HandleMouseMotion(int x,int y) {
 #if !defined(BUILDING_S2PLOT)
 	RotateCamera(-dx,dy,0.0,MOUSECONTROL);
 #else
-	if (options.interaction == INSPECT) {
+	if (options.interaction == INSPECT || options.interaction == OBJECT) {
 	  RotateCamera(-dx,dy, 0.0,MOUSECONTROL);
 	} else {
 #define ROCLIM 0.8
@@ -6396,6 +6375,9 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    /* camera speed */
    _s2_cameraspeed = 1.0;
 
+   /* object mode control */
+   _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+
    /* eye sep */
      _s2_eyesepmul = 1.0;
 
@@ -6609,6 +6591,8 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    }
 
 #if defined(S2MPICH)
+   options.interaction = OBJECT;
+
    MPI_Init(NULL, NULL);
    MPI_Comm_size(MPI_COMM_WORLD, &_s2mpi_world_size);
    MPI_Comm_rank(MPI_COMM_WORLD, &_s2mpi_world_rank);
@@ -9062,6 +9046,7 @@ void drawView(char *projinfo, double camsca) {
     }
 #endif
     
+#if !defined(S2MPICH)
     glLoadIdentity();
     s2LookAt(camera.vp.x + camoff.x,
 	      camera.vp.y + camoff.y,
@@ -9070,7 +9055,8 @@ void drawView(char *projinfo, double camsca) {
 	      camera.vp.y + camoff.y + camera.vd.y,
 	      camera.vp.z + camoff.z + camera.vd.z,
 	      camera.vu.x,camera.vu.y,camera.vu.z);
-    
+#endif    
+
 #if defined(BUILDING_S2PLOT)
     /* get projections needed for coordinate trans */
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
@@ -9081,8 +9067,23 @@ void drawView(char *projinfo, double camsca) {
     MakeLighting();
     MakeMaterial();
     
+#if defined(S2MPICH)
+    if (options.interaction == OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glPushMatrix();
+      glTranslatef(_s2_object_trans.x, _s2_object_trans.y, _s2_object_trans.z);
+      //glTranslatef(-camera.vp.x, -camera.vp.y, -camera.vp.z);
+    }
+#endif
 
     MakeGeometry(FALSE, FALSE, projinfo[0]);
+
+#if defined(S2MPICH)
+    if (options.interaction == OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glPopMatrix();
+    }
+#endif
     
 #if defined(BUILDING_S2PLOT)
     /* draw the dynamic geometry */

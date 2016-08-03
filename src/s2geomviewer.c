@@ -304,18 +304,18 @@ void CreateProjection(int eye) {
     //fprintf(stderr, "near, far = %f, %f\n", near, far);
 #endif
 
-    fprintf(stderr, "BLAHBLAHBLAH\n");
-    //XYZ ZERO = {0.,0.,0.};
-    //kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, ZERO, near, far);
+    fprintf(stderr, "Kooima Projection code\n");
     
     // compute eye offset vector: parallel to right vector on screen
     XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);
     Normalise(&screen_rgt);
     float ndfl    = near / camera.focallength;
     XYZ eye_delta = VectorMul(screen_rgt, 0.5 * camera.eyesep * ndfl);
-    XYZ eye_pos = camera.vp;
-    //eye_pos.z += 3.8;
-    eye_pos.z *= -1.0;
+    
+    //XYZ eye_pos = camera.vp;
+    XYZ eye_pos = {0., 0., 0.}; // only way to change eye pos in S2MPICH
+    // mode should be by tracker
+
     if (eye == 'l') {
       eye_pos = VectorSub(eye_delta, eye_pos);
     } else if (eye == 'r') {

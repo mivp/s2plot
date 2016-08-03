@@ -195,6 +195,9 @@ extern "C" {
   
   /* camera eye sep scale: default 1.0 */
   float _s2_eyesepmul;
+
+  /* object model (options.interaction==OBJECT) control */
+  XYZ _s2_object_trans;
   
   /* is buffer swapping allowed? - turn off for Cocoa use */
   int _s2_bufswap;

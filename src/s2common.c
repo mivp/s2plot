@@ -276,6 +276,40 @@ void RotateCamera(double ix,double iy,double iz,int source) {
 
 }
 
+/* translate scene in camera frame */
+void TranslateInCameraFrame(double sx, double sy, double sz) {
+#if defined(BUILDING_S2PLOT) 
+  if (!_s2_transcam_enable) {
+    return;
+  }
+#endif
+  double delta;
+  
+  /* Determine the amount to move */
+  if (options.deltamove <= 0) {
+    delta = VectorLength(pmin,pmax) / 2000;
+  } else {
+    delta = options.deltamove;
+  }
+
+  XYZ vd = camera.vd;
+  Normalise(&vd);
+  XYZ vu = camera.vu;
+  Normalise(&vu);
+  XYZ vr = CrossProduct(vd, vu);
+  Normalise(&vr);
+  
+  // sx is movement along right vector
+  _s2_object_trans = VectorAdd(_s2_object_trans, VectorMul(vr, sx * delta));
+  
+  // sy is movement along up vector
+  _s2_object_trans = VectorAdd(_s2_object_trans, VectorMul(vu, sy * delta));
+
+  // sz is -movement along viewdir
+  _s2_object_trans = VectorAdd(_s2_object_trans, VectorMul(vd, sz * delta));
+}
+
+
 /*
 	Fly the camera forward or backward at a given speed
 	In INSPECT mode we just get shifted in increments.
@@ -296,6 +330,14 @@ void FlyCamera(double speed)
     delta = speed * VectorLength(pmin,pmax) / 2000;
   else
     delta = speed * options.deltamove;
+
+  if (options.interaction == OBJECT) {
+    // in future this might be e.g. linked to a tracker view direction
+    //_s2_object_trans.z -= delta;
+    //camera.vp.z -= delta;
+    TranslateInCameraFrame(0., 0., -speed);
+    return;
+  } 
   
 #if defined(BUILDING_S2PLOT)
   // check we don't move through "the origin" = focus point

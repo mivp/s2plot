@@ -149,6 +149,7 @@
 #define INSPECT 0
 #define FLY     1
 #define WALK    2
+#define OBJECT  3
 
 #define NOCURSOR    0
 #define ARROWCURSOR 1

@@ -447,6 +447,9 @@ void inits2plot(void) {
     /* camera speed */
     _s2_cameraspeed = 1.0;
     
+    /* object mode control */
+    _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+
     /* eye sep */
     _s2_eyesepmul = 1.0;
     

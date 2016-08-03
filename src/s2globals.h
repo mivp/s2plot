@@ -243,6 +243,9 @@ extern float _s2_cameraspeed; /* speed / increment size for camera movements */
 /* camera eye sep scale: default 1.0 */
 extern float _s2_eyesepmul;
 
+/* object mode (options.interaction==MODEL) control */
+extern XYZ _s2_object_trans;
+
 /* is buffer swapping allowed? - turn off for Cocoa use */
 extern int _s2_bufswap;
 

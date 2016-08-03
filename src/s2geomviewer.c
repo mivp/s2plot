@@ -182,6 +182,53 @@ void MakeMaterial(void)
   }
 }
 
+void kooimaProjection(XYZ pa, XYZ pb, XYZ pc, XYZ pe, float n, float f) {
+
+  XYZ va, vb, vc;
+  XYZ vr, vu, vn;
+  float l, r, b, t, d, M[16];
+
+  // Compute an orthonormal basis for the screen.
+  vr = VectorSub(pa, pb);
+  vu = VectorSub(pa, pc);
+  Normalise(&vr);
+  Normalise(&vu);
+  vn = CrossProduct(vr, vu);
+  Normalise(&vn);
+
+  // Compute the screen corner vectors.
+  va = VectorSub(pe, pa);
+  vb = VectorSub(pe, pb);
+  vc = VectorSub(pe, pc);
+
+  // Find the distance from the eye to screen plane.
+  d = -DotProduct(va, vn);
+
+  // Find the extent of the perpendicular projection.
+  l = DotProduct(vr, va) * n / d;
+  r = DotProduct(vr, vb) * n / d;
+  b = DotProduct(vu, va) * n / d;
+  t = DotProduct(vu, vc) * n / d;
+
+  // Load the perpendicular projection.
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glFrustum(l, r, b, t, n, f);
+
+  // Rotate the projection to be non-perpendicular.
+  memset(M, 0, 16 * sizeof (float));
+  M[0] = vr.x; M[4] = vr.y; M[ 8] = vr.z;
+  M[1] = vu.x; M[5] = vu.y; M[ 9] = vu.z;
+  M[2] = vn.x; M[6] = vn.y; M[10] = vn.z;
+  M[15] = 1.0f;
+  glMultMatrixf(M);
+
+  // Move the apex of the frustum to the origin.
+  glTranslatef(-pe.x, -pe.y, -pe.z);
+  glMatrixMode(GL_MODELVIEW);
+
+}
+
 /*
 	Create the projection matrix
 	Support perspective and parallel.
@@ -236,9 +283,58 @@ void CreateProjection(int eye) {
       left  = - ratio * wd2;
       right =   ratio * wd2;
     }
+
+#if defined(S2MPICH)
+
+#if (0)
+    // line screens up to right of master -- you would use this code to simply have a flat
+    // wall of screens or windows. DEPRECATED since we will support arbitrary configurations
+    // via a config file.
+    //left += 2. * ratio * wd2 * (double)(_s2mpi_world_rank);
+    //right += 2. * ratio * wd2 * (double)(_s2mpi_world_rank);
+
+    //glTranslatef(-camera.vp.x, -camera.vp.y, -camera.vp.z);
+    //glRotatef((double)(_s2mpi_world_rank) * 90.0, 0., 1., 0.);
+    //glTranslatef(camera.vp.x, camera.vp.y, camera.vp.z);
+    
+    //fprintf(stderr, "ratio = %f\n", ratio);
+    //fprintf(stderr, "radians = %f\n", radians);
+    //fprintf(stderr, "_s2_near_far_expand = %f\n", _s2_nearfar_expand);
+    //fprintf(stderr, "fl = %f\n", camera.focallength);
+    //fprintf(stderr, "near, far = %f, %f\n", near, far);
+#endif
+
+    fprintf(stderr, "BLAHBLAHBLAH\n");
+    //XYZ ZERO = {0.,0.,0.};
+    //kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, ZERO, near, far);
+    
+    // compute eye offset vector: parallel to right vector on screen
+    XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);
+    Normalise(&screen_rgt);
+    float ndfl    = near / camera.focallength;
+    XYZ eye_delta = VectorMul(screen_rgt, 0.5 * camera.eyesep * ndfl);
+    XYZ eye_pos = camera.vp;
+    //eye_pos.z += 3.8;
+    eye_pos.z *= -1.0;
+    if (eye == 'l') {
+      eye_pos = VectorSub(eye_delta, eye_pos);
+    } else if (eye == 'r') {
+      eye_pos = VectorAdd(eye_delta, eye_pos);
+    }
+    near = 0.1; // fix near/far planes for this (CAVE2) mode
+    far = 1000.0;
+    kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
+    
+
+#else // regular non MPI multi-node stuff
+
+
     top    =   wd2;
     bottom = - wd2;
     glFrustum(left,right,bottom,top,near,far);
+    
+#endif
+
     break;
   case ORTHOGRAPHIC:
     dist = VectorLength(camera.vp,camera.pr);

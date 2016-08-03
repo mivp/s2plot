@@ -44,6 +44,10 @@
 #include <GLUT/glut.h>
 #endif
 
+#if defined(S2MPICH)
+#include <mpi.h>
+#endif
+
 void s2winInit(int *argc, char **argv) {
   glutInit(argc, argv);
 glutInitWindowPosition(0, 0);
@@ -151,6 +155,9 @@ int s2winGet(int which) {
 }
 
 void s2winSwapBuffers(void) {
+#if defined(S2MPICH)
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   glutSwapBuffers();
 }
 

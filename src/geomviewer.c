@@ -67,6 +67,12 @@ void(*_device_draw)(CAMERA cam);
 void(*_device_resize)(void);
 int(*_device_keybd)(char);
 
+#if defined (S2MPICH)
+#include <mpi.h>
+int _s2mpi_world_size, _s2mpi_world_rank;
+XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+#endif
+
 #if defined(S2OPENMP) && !defined(BUILDING_VIEWER)
 //#define POINTER_SORT 1
 #include <omp.h>
@@ -804,50 +810,210 @@ void HandleDisplay(void) {
       continue;
     }
     xs2cp(spid);
-    
+
     /* set the camera if there is an explicitly set position */
     if (_s2_cameraset) {
       _s2priv_CameraSet();
     }
     
-    /* modify the camera if we are in FLY mode */
-    if (options.interaction  == FLY) {
-      currRoC_x = (0.9 * currRoC_x + 0.1 * targetRoC_x);
-      currRoC_y = (0.9 * currRoC_y + 0.1 * targetRoC_y);
-      RotateCamera(currRoC_x, 0., 0., MOUSECONTROL);
-      RotateCamera(0., currRoC_y, 0., MOUSECONTROL);
-    }
-    
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
 #endif
     
-    /* handle autopilot mode - what does this mean??? */
-    if (options.autopilot) {
-      options.autopilot = AutoPilot(1,"");
+      /* modify the camera if we are in FLY mode */
+      if (options.interaction  == FLY) {
+	currRoC_x = (0.9 * currRoC_x + 0.1 * targetRoC_x);
+	currRoC_y = (0.9 * currRoC_y + 0.1 * targetRoC_y);
+	RotateCamera(currRoC_x, 0., 0., MOUSECONTROL);
+	RotateCamera(0., currRoC_y, 0., MOUSECONTROL);
+      }
+      
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
     }
+#endif
+
+#endif // BUILDING_S2PLOT section
+    
+    
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      /* handle autopilot mode - what does this mean??? */
+      if (options.autopilot) {
+	options.autopilot = AutoPilot(1,"");
+      }
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
     
     /* modify the camera if we are in autospin mode */
 #if defined(BUILDING_S2PLOT)
-    float tmpcs = ss2qcs();
-    ss2scs(ss2qss());
-#endif 
+    float tmpcs;
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      tmpcs = ss2qcs();
+      ss2scs(ss2qss());
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
+#endif // BUILDING_S2PLOT 
 
-    if ((int)options.autospin.x != 0) {
-      RotateCamera(options.autospin.x/5,0.0,0.0,KEYBOARDCONTROL);
-    }
-    if ((int)options.autospin.y != 0) {
-      RotateCamera(0.0,options.autospin.y/5,0.0,KEYBOARDCONTROL);
-    }
-    if ((int)options.autospin.z != 0) {
-      RotateCamera(0.0,0.0,options.autospin.z/5,KEYBOARDCONTROL);
-    }
+
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      if ((int)options.autospin.x != 0) {
+	RotateCamera(options.autospin.x/5,0.0,0.0,KEYBOARDCONTROL);
+      }
+      if ((int)options.autospin.y != 0) {
+	RotateCamera(0.0,options.autospin.y/5,0.0,KEYBOARDCONTROL);
+      }
+      if ((int)options.autospin.z != 0) {
+	RotateCamera(0.0,0.0,options.autospin.z/5,KEYBOARDCONTROL);
+      }
 #if defined(BUILDING_S2PLOT)
-    ss2scs(tmpcs);
+      ss2scs(tmpcs);
 #endif
     
     /* handle flying mode ??? */
-    if (ABS(camera.speed) > EPSILON) 
-      FlyCamera(camera.speed);
+      if (ABS(camera.speed) > EPSILON) 
+	FlyCamera(camera.speed);
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
+
+    // now let's share the master camera with the slaves...
+#if defined(S2MPICH)
+    // reminder of the CAMERA_STRUCT
+    //typedef struct {
+    //XYZ vp;           	/* View position            */
+    //XYZ vd;           	/* View direction vector    */
+    //XYZ vu;           	/* View up direction        */
+    //XYZ pr;		/* Point to rotate about    */
+    //double focallength;   /* Focal Length along vd    */
+    //XYZ focus;            /* Focal point - Derived    */
+    //double aperture;  	/* Camera VERTICAL aperture */
+    //double eyesep;	/* Eye separation	    */
+    //double speed;         /* Speed in vd direction    */
+    //double fishrotate;    /* Rotate fisheye camera    */
+    //} CAMERA;
+    double camdat[20];
     
+    if (_s2mpi_world_rank == 0) {
+      // master: describe the camera
+      //fprintf(stderr, "Master describing the camera ...\n");
+      
+      camdat[0] = camera.vp.x;
+      camdat[1] = camera.vp.y;
+      camdat[2] = camera.vp.z;
+
+      camdat[3] = camera.vd.x;
+      camdat[4] = camera.vd.y;
+      camdat[5] = camera.vd.z;
+      
+      camdat[6] = camera.vu.x;
+      camdat[7] = camera.vu.y;
+      camdat[8] = camera.vu.z;
+
+      camdat[9] = camera.pr.x;
+      camdat[10] = camera.pr.y;
+      camdat[11] = camera.pr.z;
+
+      camdat[12] = camera.focallength;
+      
+      camdat[13] = camera.focus.x;
+      camdat[14] = camera.focus.y;
+      camdat[15] = camera.focus.z;
+
+      camdat[16] = camera.aperture;
+      camdat[17] = camera.eyesep;
+      camdat[18] = camera.speed;
+      camdat[19] = camera.fishrotate;
+
+    }
+
+    //fprintf(stderr, "broadcasting ...\n");
+    MPI_Bcast((void *)camdat, 20, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    //fprintf(stderr, "broadcast done!\n");
+
+    if (_s2mpi_world_rank != 0) {
+      // slave: take on the broadcast camera
+      //fprintf(stderr, "Slave settin the received camera...\n");
+      
+      camera.vp.x = camdat[0];
+      camera.vp.y = camdat[1]; 
+      camera.vp.z = camdat[2]; 
+      
+      camera.vd.x = camdat[3];
+      camera.vd.y = camdat[4]; 
+      camera.vd.z = camdat[5];
+      
+      camera.vu.x = camdat[6];
+      camera.vu.y = camdat[7]; 
+      camera.vu.z = camdat[8]; 
+      
+      camera.pr.x = camdat[9];
+      camera.pr.y = camdat[10];
+      camera.pr.z = camdat[11];
+			                
+      camera.focallength = camdat[12];
+      			      		
+      camera.focus.x = camdat[13];
+      camera.focus.y = camdat[14];
+      camera.focus.z = camdat[15];
+			                
+      camera.aperture = camdat[16];
+      camera.eyesep = camdat[17];
+      camera.speed = camdat[18];
+      camera.fishrotate = camdat[19];
+      
+#if (0) // this code for modifying the view of the different slaves is now DEPRECATED
+      // as we are replacing this with a config file and new code to compute the projection
+      // for off axis asymmetric frustums. See CreateProjection.
+
+      //fprintf(stderr, "receive done.\n");
+
+      // rotate viewdir as an experiment
+      //XYZ tmp = RotateY(camera.vd, M_PI/2.0);
+      //camera.vd = tmp;
+      
+      // Calculate the new view direction 
+      // DGB: ASSUMPTION vu = y axis
+
+      float ratio = 4. / 3.; // default S2PLOT screen ratio
+      float v_theta_2 = M_PI/4.0 / 2.0; // default camera aperture 45deg in VERTICAL plane
+      float h_theta_2 = atan(ratio * tan(v_theta_2));
+      //fprintf(stderr, "v_theta_2 = %f, h_theta_2 = %f, ratio*v_theta_2 = %f\n",
+      //	      v_theta_2, h_theta_2, ratio * v_theta_2);
+      XYZ tmp = RotateY(camera.vd, (double)(_s2mpi_world_rank) * 2.0 * h_theta_2); 
+      Normalise(&tmp);
+      camera.vd = tmp;
+
+      // Determine the new up vector 
+      // hasn't changed due to above assumption
+
+      /* Update the focal point */
+      camera.focus.x = camera.vp.x + camera.focallength * camera.vd.x;
+      camera.focus.y = camera.vp.y + camera.focallength * camera.vd.y;
+      camera.focus.z = camera.vp.z + camera.focallength * camera.vd.z;
+#endif
+
+    }
+#endif 
+   
 #if defined(BUILDING_S2PLOT)
 
     /* update the dynamic geometry lists for this panel */
@@ -6446,6 +6612,43 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      int a = 1;
      pthread_create(&p_thread, NULL, remote_thread_sub, (void *)&a);
    }
+
+#if defined(S2MPICH)
+   MPI_Init(NULL, NULL);
+   MPI_Comm_size(MPI_COMM_WORLD, &_s2mpi_world_size);
+   MPI_Comm_rank(MPI_COMM_WORLD, &_s2mpi_world_rank);
+   char processor_name[MPI_MAX_PROCESSOR_NAME];
+   int name_len;
+   MPI_Get_processor_name(processor_name, &name_len);
+   fprintf(stderr, "Hello world from processor %s, rank %d"
+	   " out of %d processors\n", processor_name,
+	   _s2mpi_world_rank, _s2mpi_world_size);
+
+   // read config file - select "rank"th row - and store p_a, p_b, p_c vectors defining
+   // BLC, TLC, BRC of this screen in world coordinates centred at origin of display system
+   // e.g. centre of CAVE2
+   FILE *config = fopen("s2config", "r");
+   if (!config) {
+     fprintf(stderr, "Failed to open required 's2config' file for S2MPICH mode.\n");
+     exit(-1);
+   } else {
+     int ln = 0;
+     char *configline = NULL;
+     size_t configlinecap= 0;
+     while (ln < (_s2mpi_world_rank+1) && !feof(config)) {
+       getline(&configline, &configlinecap, config);
+       ln++;
+     }
+     sscanf(configline, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+     	    &ln,
+     	    &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
+     	    &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
+     	    &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
+     fprintf(stderr, "read line: %s\n", configline);
+   }
+   fclose(config);
+
+#endif
 
    /* everything seems to be ok */
    return 1;

@@ -216,6 +216,9 @@ extern "C" {
   /* pointer to remote control callback function which also sends information back to client*/
   int (*_s2_remcb_sock)(char *, FILE *);
 
+  /* pointer to remote control callback function which also sends information back to client via write method*/
+  int (*_s2_remcb_sock_write)(char *, int);
+
   /* this can be set to 1 in very special circumstances to avoid
    * waiting for a mutex lock in threads */
   int _s2_skiplock; 

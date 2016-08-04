@@ -245,6 +245,7 @@ extern float _s2_eyesepmul;
 
 /* object mode (options.interaction==MODEL) control */
 extern XYZ _s2_object_trans;
+extern double _s2_object_rot[16];
 
 /* is buffer swapping allowed? - turn off for Cocoa use */
 extern int _s2_bufswap;

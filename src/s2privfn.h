@@ -99,6 +99,13 @@ extern "C" {
 
   // translate scene in camera frame
   void TranslateInCameraFrame(double,double,double);
+  // compute Rotation Matrix
+  void computeRotationMatrix4x4(double mx[16], XYZ axis, double radians);
+  // pre/postmultiply (rotation) matrix
+  void premultiplyMatrix4x4(double mx[16], double my[16]);
+  void postmultiplyMatrix4x4(double mx[16], double my[16]);
+  // apply 4x4 transformation matrix to XYZ (3-vector, no translation)
+  XYZ apply4x4transformMatrix(double mx[16], XYZ a);
 
   void CameraHome(int mode);
   void RotateCamera(double,double,double,int); 

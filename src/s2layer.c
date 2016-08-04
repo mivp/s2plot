@@ -449,6 +449,12 @@ void inits2plot(void) {
     
     /* object mode control */
     _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+    int xi;
+    for (xi = 0; xi < 16; xi++) {
+      _s2_object_rot[xi] = 0.;
+    }
+    _s2_object_rot[0] = _s2_object_rot[5] = _s2_object_rot[10] = 1.0;
+    _s2_object_rot[15] = 1.0;
 
     /* eye sep */
     _s2_eyesepmul = 1.0;

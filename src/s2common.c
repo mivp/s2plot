@@ -162,10 +162,35 @@ void RotateCamera(double ix,double iy,double iz,int source) {
      Just change the up vector
   */
   if (ABS(iz) > EPSILON) {
-    camera.vu.x += iz * right.x * delta;
-    camera.vu.y += iz * right.y * delta;
-    camera.vu.z += iz * right.z * delta;
-    Normalise(&camera.vu);
+    if (options.interaction == OBJECT) {
+      // rolls are rotations around the view direction
+      double rx[16];
+      // 1. rotate vd into object space:
+      //XYZ vdo = apply4x4transformMatrix(_s2_object_rot, vd);
+      computeRotationMatrix4x4(rx, vd, iz * delta);
+      postmultiplyMatrix4x4(_s2_object_rot, rx);
+
+    } else {
+      camera.vu.x += iz * right.x * delta;
+      camera.vu.y += iz * right.y * delta;
+      camera.vu.z += iz * right.z * delta;
+      Normalise(&camera.vu);
+      return;
+    }
+  }
+
+  /* Object mode, store the rotation in the _s2_object_rot matrix */
+  if (options.interaction == OBJECT) {
+    double rx[16];
+    if (ABS(ix) > EPSILON) {
+      // left/right are rotations around the up vector (Yaw)
+      computeRotationMatrix4x4(rx, camera.vu, -ix * delta);
+      postmultiplyMatrix4x4(_s2_object_rot, rx);
+    } else if (ABS(iy) > EPSILON) {
+      // up/down are rotations around the right vector (pitch)
+      computeRotationMatrix4x4(rx, right, iy * delta);
+      postmultiplyMatrix4x4(_s2_object_rot, rx);
+    }
     return;
   }
   
@@ -275,6 +300,88 @@ void RotateCamera(double ix,double iy,double iz,int source) {
   camera.focus.z = camera.vp.z + camera.focallength * camera.vd.z;
 
 }
+
+// premultiply 4x4 matrix: mx -> mx*my
+void premultiplyMatrix4x4(double mx[16], double my[16]) {
+  double tx[16];
+  int c, r; // col, row
+  int i; // idx
+  double f;
+  for (c = 0; c < 4; c++) {
+    for (r = 0; r < 4; r++) {
+      f = 0.0;
+      for (i = 0; i < 4; i++) {
+	f += mx[i*4 + r] * my[c*4+i];
+      }
+      tx[c*4+r] = f;
+    }
+  }
+
+  for (i = 0; i < 16; i++) {
+    mx[i] = tx[i];
+  }
+}
+
+// postmultiply 4x4 matrix: mx -> my*mx
+void postmultiplyMatrix4x4(double mx[16], double my[16]) {
+  double tx[16];
+  int c, r; // col, row
+  int i; // idx
+  double f;
+  for (c = 0; c < 4; c++) {
+    for (r = 0; r < 4; r++) {
+      f = 0.0;
+      for (i = 0; i < 4; i++) {
+	f += my[i*4 + r] * mx[c*4+i];
+      }
+      tx[c*4+r] = f;
+    }
+  }
+
+  for (i = 0; i < 16; i++) {
+    mx[i] = tx[i];
+  }
+}
+
+// apply a 4x4 transformation matrix to a vector
+XYZ apply4x4transformMatrix(double mx[16], XYZ a) {
+  XYZ b;
+  b.x = mx[0] * a.x + mx[4] * a.y + mx[8] * a.z;
+  b.y = mx[1] * a.x + mx[5] * a.y + mx[9] * a.z;
+  b.z = mx[2] * a.x + mx[6] * a.y + mx[10]* a.z;
+  return b;
+}
+
+
+// compute the rotation matrix of an angle radians around the normalised
+// axis axis, store in 4x4 mx.
+void computeRotationMatrix4x4(double mx[16], XYZ axis, double radians) {
+  Normalise(&axis);
+  double cost = cos(radians);
+  double sint = sin(radians);
+  double u = axis.x;
+  double v = axis.y;
+  double w = axis.z;
+  // see inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotate 5.2
+  mx[0] = u*u+(1-u*u)*cost;
+  mx[4] = u*v*(1-cost) - w*sint;
+  mx[8] = u*w*(1-cost) + v*sint;
+  mx[12] = 0.0;
+  
+  mx[1] = u*v*(1-cost) + w*sint;
+  mx[5] = v*v+(1-v*v)*cost;
+  mx[9] = v*w*(1-cost) - u*sint;
+  mx[13] = 0.0;
+
+  mx[2] = u*w*(1-cost) - v*sint;
+  mx[6] = v*w*(1-cost) + u*sint;
+  mx[10]= w*w+(1-w*w)*cost;
+  mx[14] = 0.0;
+
+  mx[3] = mx[7] = mx[11] = 0.0;
+  mx[15] = 1.0;
+}
+
 
 /* translate scene in camera frame */
 void TranslateInCameraFrame(double sx, double sy, double sz) {

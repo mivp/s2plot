@@ -287,25 +287,7 @@ void CreateProjection(int eye) {
 
 #if defined(S2MPICH)
 
-#if (0)
-    // line screens up to right of master -- you would use this code to simply have a flat
-    // wall of screens or windows. DEPRECATED since we will support arbitrary configurations
-    // via a config file.
-    //left += 2. * ratio * wd2 * (double)(_s2mpi_world_rank);
-    //right += 2. * ratio * wd2 * (double)(_s2mpi_world_rank);
-
-    //glTranslatef(-camera.vp.x, -camera.vp.y, -camera.vp.z);
-    //glRotatef((double)(_s2mpi_world_rank) * 90.0, 0., 1., 0.);
-    //glTranslatef(camera.vp.x, camera.vp.y, camera.vp.z);
-    
-    //fprintf(stderr, "ratio = %f\n", ratio);
-    //fprintf(stderr, "radians = %f\n", radians);
-    //fprintf(stderr, "_s2_near_far_expand = %f\n", _s2_nearfar_expand);
-    //fprintf(stderr, "fl = %f\n", camera.focallength);
-    //fprintf(stderr, "near, far = %f, %f\n", near, far);
-#endif
-
-    fprintf(stderr, "Kooima Projection code\n");
+    //fprintf(stderr, "Kooima Projection code\n");
     
     // compute eye offset vector: parallel to right vector on screen
     XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);

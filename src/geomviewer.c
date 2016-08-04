@@ -896,105 +896,11 @@ void HandleDisplay(void) {
 #endif
 
     // now let's share the master camera with the slaves...
-#if defined(S2MPICH)
-    // reminder of the CAMERA_STRUCT
-    //typedef struct {
-    //XYZ vp;           	/* View position            */
-    //XYZ vd;           	/* View direction vector    */
-    //XYZ vu;           	/* View up direction        */
-    //XYZ pr;		/* Point to rotate about    */
-    //double focallength;   /* Focal Length along vd    */
-    //XYZ focus;            /* Focal point - Derived    */
-    //double aperture;  	/* Camera VERTICAL aperture */
-    //double eyesep;	/* Eye separation	    */
-    //double speed;         /* Speed in vd direction    */
-    //double fishrotate;    /* Rotate fisheye camera    */
-    //} CAMERA;
-    double camdat[20];
-    double obj_trans_dat[3];
-    
-    if (_s2mpi_world_rank == 0) {
-      // master: describe the camera
-      //fprintf(stderr, "Master describing the camera ...\n");
-      /*
-      camdat[0] = camera.vp.x;
-      camdat[1] = camera.vp.y;
-      camdat[2] = camera.vp.z;
-
-      camdat[3] = camera.vd.x;
-      camdat[4] = camera.vd.y;
-      camdat[5] = camera.vd.z;
-      
-      camdat[6] = camera.vu.x;
-      camdat[7] = camera.vu.y;
-      camdat[8] = camera.vu.z;
-
-      camdat[9] = camera.pr.x;
-      camdat[10] = camera.pr.y;
-      camdat[11] = camera.pr.z;
-
-      camdat[12] = camera.focallength;
-      
-      camdat[13] = camera.focus.x;
-      camdat[14] = camera.focus.y;
-      camdat[15] = camera.focus.z;
-
-      camdat[16] = camera.aperture;
-      camdat[17] = camera.eyesep;
-      camdat[18] = camera.speed;
-      camdat[19] = camera.fishrotate;
-      */
-      //obj_trans_dat[0] = _s2_object_trans.x;
-      //obj_trans_dat[1] = _s2_object_trans.y;
-      //obj_trans_dat[2] = _s2_object_trans.z;
-
-    }
-
-    //fprintf(stderr, "broadcasting ...\n");
-    //MPI_Bcast((void *)camdat, 20, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#if defined(S2MPICH)    
     MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
-    //MPI_Bcast((void *)obj_trans_dat, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
-    //fprintf(stderr, "broadcast done!\n");
-
-
-    if (_s2mpi_world_rank != 0) {
-      // slave: take on the broadcast camera
-      //fprintf(stderr, "Slave settin the received camera...\n");
-      /* 
-      camera.vp.x = camdat[0];
-      camera.vp.y = camdat[1]; 
-      camera.vp.z = camdat[2]; 
-      
-      camera.vd.x = camdat[3];
-      camera.vd.y = camdat[4]; 
-      camera.vd.z = camdat[5];
-      
-      camera.vu.x = camdat[6];
-      camera.vu.y = camdat[7]; 
-      camera.vu.z = camdat[8]; 
-      
-      camera.pr.x = camdat[9];
-      camera.pr.y = camdat[10];
-      camera.pr.z = camdat[11];
-			                
-      camera.focallength = camdat[12];
-      			      		
-      camera.focus.x = camdat[13];
-      camera.focus.y = camdat[14];
-      camera.focus.z = camdat[15];
-			                
-      camera.aperture = camdat[16];
-      camera.eyesep = camdat[17];
-      camera.speed = camdat[18];
-      camera.fishrotate = camdat[19];
-      */
-      //_s2_object_trans.x = obj_trans_dat[0];
-      //_s2_object_trans.y = obj_trans_dat[1];
-      //_s2_object_trans.z = obj_trans_dat[2];
-
-    }
+    MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif 
    
 #if defined(BUILDING_S2PLOT)
@@ -6316,6 +6222,12 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
    /* object mode control */
    _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+   int xi;
+   for (xi = 0; xi < 16; xi++) {
+     _s2_object_rot[xi] = 0.;
+   }
+   _s2_object_rot[0] = _s2_object_rot[5] = _s2_object_rot[10] = 1.0;
+   _s2_object_rot[15] = 1.0;
 
    /* eye sep */
      _s2_eyesepmul = 1.0;
@@ -9015,8 +8927,14 @@ void drawView(char *projinfo, double camsca) {
     if (options.interaction == OBJECT) {
       glMatrixMode(GL_MODELVIEW);
       glPushMatrix();
+      glLoadIdentity();
+
+      // translate modelview matrix with _s2_object_trans
       glTranslatef(_s2_object_trans.x, _s2_object_trans.y, _s2_object_trans.z);
-      //glTranslatef(-camera.vp.x, -camera.vp.y, -camera.vp.z);
+
+      // multiply modelview matrix with _s2_object_rot
+      glMultMatrixd(_s2_object_rot);
+
     }
 #endif
 

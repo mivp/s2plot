@@ -198,7 +198,8 @@ extern "C" {
 
   /* object model (options.interaction==OBJECT) control */
   XYZ _s2_object_trans;
-  
+  double _s2_object_rot[16];
+
   /* is buffer swapping allowed? - turn off for Cocoa use */
   int _s2_bufswap;
 

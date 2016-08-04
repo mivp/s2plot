@@ -2355,6 +2355,10 @@ void HandleKeyboard(unsigned char key, int x, int y) {
   // x, y meaningful
 }
 
+float getFramerate(){
+    return interfacestate.framerate;
+}
+
 /*
    Deal with plain key strokes
 	The x and y are the screen coordinate of the mouse at the time
@@ -6247,6 +6251,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    /* remote handler */
    _s2_remcb = NULL;
    _s2_remcb_sock = NULL;
+   _s2_remcb_sock_write = NULL;
    _s2_skiplock = 0;
    _s2_remoteport = 0;
    
@@ -6545,6 +6550,10 @@ void *remote_thread_sub(void *data) {
 
 	if (_s2_remcb_sock) {
       consumed = _s2_remcb_sock(rgot, sockout);
+    }
+
+    if (_s2_remcb_sock_write){
+      consumed = _s2_remcb_sock_write(rgot, cfd);
     }
 
 	if (!consumed) {
@@ -7223,6 +7232,9 @@ void cs2srcb_sock(void *rcbfn) {
   _s2_remcb_sock = (int (*)(char *, FILE *))rcbfn;
 }
 
+void cs2srcb_sock_write(void *rcbfn) {
+  _s2_remcb_sock_write = (int (*)(char *, int))rcbfn;
+}
 
 /* set the handle callback function */
 void cs2shcb(void *icbfn) {

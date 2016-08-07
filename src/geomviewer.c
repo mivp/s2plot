@@ -8915,7 +8915,7 @@ void drawView(char *projinfo, double camsca) {
     
 #if !defined(S2MPICH)
     glLoadIdentity();
-    fprintf(stderr, "s2LookAt\n");
+    //fprintf(stderr, "s2LookAt\n");
     s2LookAt(camera.vp.x + camoff.x,
 	      camera.vp.y + camoff.y,
 	      camera.vp.z + camoff.z,

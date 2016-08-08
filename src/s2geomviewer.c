@@ -286,6 +286,7 @@ void CreateProjection(int eye) {
     }
 
 #if defined(S2MPICH)
+    if (_s2mpi_world_size > 1) {
 
     //fprintf(stderr, "Kooima Projection code\n");
     
@@ -307,15 +308,15 @@ void CreateProjection(int eye) {
     near = 0.1; // fix near/far planes for this (CAVE2) mode
     far = 1000.0;
     kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
+    } else {
+#endif
+
+      top    =   wd2;
+      bottom = - wd2;
+      glFrustum(left,right,bottom,top,near,far);
     
-
-#else // regular non MPI multi-node stuff
-
-
-    top    =   wd2;
-    bottom = - wd2;
-    glFrustum(left,right,bottom,top,near,far);
-    
+#if defined(S2MPICH) 
+    }
 #endif
 
     break;

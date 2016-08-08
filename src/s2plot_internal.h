@@ -146,6 +146,9 @@ extern "C" {
      {"/S2INTERF", 1, 31, 1, "Interleaved stereoscopic, full-screen display"},
      {"/S2WPASSV", 0, 32, 0, "Warped passive stereoscopic, windowed display"},
      {"/S2WPASSVF",1, 32, 0, "Warped passive stereoscopic, full-screen display"},
+#if defined(S2MPICH)
+     {"/S2MULTI",  0, 63, 0, "Multihead"},
+#endif
      {"/S2NULL",   0, -1, 1, "Null device (no display)"}};
   int _s2_ndevices = 24;
   
@@ -335,6 +338,15 @@ extern "C" {
   /* cache of textures (generally used in callbacks) */
   int _s2_ctext_count;
   _S2CACHEDTEXTURE *_s2_ctext;
+
+  /* global store for MPI state and world display position */
+#if defined(S2MPICH)
+  int _s2mpi_world_size, _s2mpi_world_rank;
+  XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+#endif
+  
+  /* store for the device string in case a device needs further info */
+  char _s2_devstr[128];
   
 #if defined(__cplusplus) && !defined(S2_CPPBUILD)
 } // extern "C" {

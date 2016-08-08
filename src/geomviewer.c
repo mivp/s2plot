@@ -570,8 +570,18 @@ void CreateOpenGL(void)
   s2winInitDisplayMode(options.stereo, _s2x_ati);
 
   // set default screen dimensions
-  options.screenwidth  = 800;
-  options.screenheight = 600;
+#if defined(S2MPICH)
+  if (_s2mpi_pixels_width > -1 && _s2mpi_pixels_height > -1) {
+    options.screenwidth = _s2mpi_pixels_width;
+    options.screenheight = _s2mpi_pixels_height;
+  } else {
+#endif
+    options.screenwidth  = 800;
+    options.screenheight = 600;
+#if defined(S2MPICH)
+  }
+#endif
+
 #if defined(BUILDING_S2PLOT)
   {
     char *widthstr = getenv("S2PLOT_WIDTH");
@@ -5976,6 +5986,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
   //  " out of %d processors\n", processor_name,
   //  _s2mpi_world_rank, _s2mpi_world_size);
   
+  _s2mpi_pixels_width = _s2mpi_pixels_height = -1;
   if (_s2mpi_world_size > 1) {
     /* for multihead, only useable interaction mode is OBJECT */
     options.interaction = OBJECT;
@@ -5998,7 +6009,6 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      */
     FILE *config = fopen(cfg, "r");
     char mydevice[32];
-    int mydevx, mydevy;
     if (!config) {
       fprintf(stderr, "Failed to open required 's2config' file for S2MULTI mode.\n");
       exit(-1);
@@ -6006,13 +6016,16 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
       int ln = 0;
       char *configline = NULL;
       size_t configlinecap= 0;
+      // BIG ASSUMPTION: CONFIG FILE is in NODE ORDER as per MPI LAUNCH
+      // i.e. first column of CONFIG file is in order, and corresponds to
+      // MPI world ranks
       while (ln < (_s2mpi_world_rank+1) && !feof(config)) {
 	getline(&configline, &configlinecap, config);
 	ln++;
       }
       sscanf(configline, "%d %s %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
 	     &ln,
-	     mydevice, &mydevx, &mydevy,
+	     mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
 	     &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
 	     &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
 	     &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);

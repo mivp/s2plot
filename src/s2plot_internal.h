@@ -343,6 +343,7 @@ extern "C" {
 #if defined(S2MPICH)
   int _s2mpi_world_size, _s2mpi_world_rank;
   XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+  int _s2mpi_pixels_width, _s2mpi_pixels_height;
 #endif
   
   /* store for the device string in case a device needs further info */

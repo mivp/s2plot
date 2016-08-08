@@ -11,7 +11,7 @@ use Math::Trig;
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 2;           # ahem, number of screens :-)
+$nscreens = 3;           # ahem, number of screens :-)
 $radius = 3800.0;        # radius (centre to edge of screen NOT centre of screen) in mm
 $device = "/S2MONO";
 $dx = 320;
@@ -26,7 +26,13 @@ $sy = $diagonal / sqrt(1 + $aspect*$aspect);        # screen height in mm
 $sx = $diagonal / sqrt(1 + 1.0/($aspect*$aspect));  # screen width in mm
 $theta = 2.0 * asin(0.5 * $sx / $radius);       # screen subtends this angle
 $offset = ($nscreens % 2) ? ($nscreens-1)/2 : $nscreens/2 - 1;   # offset to apply to screen number
-$offset += 1;
+
+if ($nscreens % 2) {
+    $offset += 0.5;
+} else {
+    $offset += 1;
+}
+
 
 # loop over screens
 for ($i = 0; $i < $nscreens; $i++) {
@@ -44,7 +50,7 @@ for ($i = 0; $i < $nscreens; $i++) {
     $pc_z = $pa_z;
     $pc_y = +0.5 * $sy;
 
-    printf STDERR "%d $device $dx $dy %f %f %f %f %f %f %f %f %f\n", $i, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
+    printf STDOUT "%d $device $dx $dy %f %f %f %f %f %f %f %f %f\n", $i, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
 }
 
 

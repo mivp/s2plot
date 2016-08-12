@@ -31,9 +31,11 @@
  # $Id: linux-gnu-x86_64.in 5793 2012-10-09 02:06:45Z dbarnes $
  #
 
-#set COMPPATH="/usr/local/gcc/4.8.2/bin"
-set COMPPATH="/usr/local/gcc/4.9.1/bin"
-#set COMPPATH="/usr/bin"
+# MASSIVE
+# set COMPPATH="/usr/local/gcc/4.9.1/bin"
+# CAVE2
+set COMPPATH="/usr/bin"
+
 set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src -m64"
 
 set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall"
@@ -45,8 +47,8 @@ set GPP=g++
 set GFC=gfortran
 
 if ($S2MPI == yes) then
+  set COMPPATH=/usr/lib64/mpi/gcc/openmpi/bin
 
-   set COMPPATH=/usr/local/mpich/3.1.4/bin
   set COMMFLAGS="${COMMFLAGS} -DS2MPICH"
   set GCC=mpicc
   set GPP=mpicxx

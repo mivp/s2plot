@@ -69,8 +69,6 @@ int(*_device_keybd)(char);
 
 #if defined (S2MPICH)
 #include <mpi.h>
-int _s2mpi_world_size, _s2mpi_world_rank;
-XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
 #endif
 
 #if defined(S2OPENMP) && !defined(BUILDING_VIEWER)
@@ -572,8 +570,18 @@ void CreateOpenGL(void)
   s2winInitDisplayMode(options.stereo, _s2x_ati);
 
   // set default screen dimensions
-  options.screenwidth  = 800;
-  options.screenheight = 600;
+#if defined(S2MPICH)
+  if (_s2mpi_pixels_width > -1 && _s2mpi_pixels_height > -1) {
+    options.screenwidth = _s2mpi_pixels_width;
+    options.screenheight = _s2mpi_pixels_height;
+  } else {
+#endif
+    options.screenwidth  = 800;
+    options.screenheight = 600;
+#if defined(S2MPICH)
+  }
+#endif
+
 #if defined(BUILDING_S2PLOT)
   {
     char *widthstr = getenv("S2PLOT_WIDTH");
@@ -896,11 +904,13 @@ void HandleDisplay(void) {
 #endif
 
     // now let's share the master camera with the slaves...
-#if defined(S2MPICH)    
-    MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#if defined(S2MPICH)
+    if (_s2mpi_world_size > 1) {
+      MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    }
 #endif 
    
 #if defined(BUILDING_S2PLOT)
@@ -1056,13 +1066,15 @@ void HandleDisplay(void) {
 		   options.windowdump*options.screenwidth,options.windowdump*options.screenheight);
 	glDrawBuffer(GL_BACK_LEFT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-#if !defined(S2MPICH)
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
-		  camera.focus.x,camera.focus.y,camera.focus.z,
-		  camera.vu.x,camera.vu.y,camera.vu.z);
-#endif
+	//#if !defined(S2MPICH)
+	if (options.interaction != OBJECT) {
+	  glMatrixMode(GL_MODELVIEW);
+	  glLoadIdentity();
+	  s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
+		   camera.focus.x,camera.focus.y,camera.focus.z,
+		   camera.vu.x,camera.vu.y,camera.vu.z);
+	}
+	//#endif
 	MakeLighting();
 	MakeMaterial();
 	MakeGeometry(FALSE, FALSE, 'c');
@@ -2956,13 +2968,15 @@ void HandleMouse(int button,int state,int x,int y) {
 	gluPickMatrix(x,viewport[3]-y,3.0,3.0,viewport);
 	CreateProjection('c');
 	glDrawBuffer(GL_BACK_LEFT);
-#if !defined(S2MPICH)
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
-		  camera.focus.x,camera.focus.y,camera.focus.z,
-		  camera.vu.x,camera.vu.y,camera.vu.z);
-#endif
+	//#if !defined(S2MPICH)
+	if (options.interaction != OBJECT) {
+	  glMatrixMode(GL_MODELVIEW);
+	  glLoadIdentity();
+	  s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
+		   camera.focus.x,camera.focus.y,camera.focus.z,
+		   camera.vu.x,camera.vu.y,camera.vu.z);
+	}
+	//#endif
 	MakeLighting();
 	MakeMaterial();
 	MakeGeometry(FALSE, FALSE, 'c');
@@ -4988,7 +5002,7 @@ int _s2priv_find_device(char *devstr) {
   int i = 0;
   while ((i < _s2_ndevices) && 
 	 strncasecmp(devstr, _s2_valid_devices[i].devicename,
-		     strlen(devstr))) {
+		     strlen(_s2_valid_devices[i].devicename))) {
     i++;
   }
   if (i < _s2_ndevices) {
@@ -5957,6 +5971,80 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
   /* default device capabilities */
   _s2_devcap = _S2DEVCAP_CURSOR | _S2DEVCAP_CROSSHAIR | _S2DEVCAP_SELECTION;
 
+#if defined(S2MPICH)
+  MPI_Init(NULL, NULL);
+  MPI_Comm_size(MPI_COMM_WORLD, &_s2mpi_world_size);
+  if ((_s2mpi_world_size > 1) && (istereo != 63)) {
+    fprintf(stderr, "For multihead mode, S2PLOT device *must* be '/S2MULTI/...'\n");
+    exit(-1);
+  }
+  MPI_Comm_rank(MPI_COMM_WORLD, &_s2mpi_world_rank);
+  char processor_name[MPI_MAX_PROCESSOR_NAME];
+  int name_len;
+  MPI_Get_processor_name(processor_name, &name_len);
+  //fprintf(stderr, "Hello world from processor %s, rank %d"
+  //  " out of %d processors\n", processor_name,
+  //  _s2mpi_world_rank, _s2mpi_world_size);
+  
+  _s2mpi_pixels_width = _s2mpi_pixels_height = -1;
+  if (_s2mpi_world_size > 1) {
+    /* for multihead, only useable interaction mode is OBJECT */
+    options.interaction = OBJECT;
+    
+    /* find config file name */
+    char *cfg = strtok(_s2_devstr, "/"); // cfg = "S2MULTI"
+    if (strcasecmp(cfg, "S2MULTI")) {
+      fprintf(stderr, "Invalid device format.\n");
+      exit(-1);
+    }
+    cfg = strtok(NULL, "/");
+    if (!cfg) {
+      cfg = "s2config.txt";
+    }
+    /* cfg is now the filename for the config file */
+    
+    /* read config file - select "rank"th row - and store p_a, p_b, p_c vectors
+     * defining BLC, TLC, BRC of this screen in world coordinates centred at 
+     * origin of display system e.g. centre of CAVE2
+     */
+    FILE *config = fopen(cfg, "r");
+    char mydevice[32];
+    if (!config) {
+      fprintf(stderr, "Failed to open required 's2config' file for S2MULTI mode.\n");
+      exit(-1);
+    } else {
+      int ln = 0;
+      char *configline = NULL;
+      size_t configlinecap= 0;
+      // BIG ASSUMPTION: CONFIG FILE is in NODE ORDER as per MPI LAUNCH
+      // i.e. first column of CONFIG file is in order, and corresponds to
+      // MPI world ranks
+      while (ln < (_s2mpi_world_rank+1) && !feof(config)) {
+	getline(&configline, &configlinecap, config);
+	ln++;
+      }
+      sscanf(configline, "%d %s %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+	     &ln,
+	     mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
+	     &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
+	     &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
+	     &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
+      fprintf(stderr, "read line: %s\n", configline);
+    }
+    fclose(config);
+    
+    /*  now map mydevice to istereo and ifullscreen to use! */
+    int mydeviceid = _s2priv_find_device(mydevice);
+    if (mydeviceid < 0) {
+      fprintf(stderr, "s2opend: device \"%s\" from config file is unknown.\n", mydevice);
+      exit(-1);
+    }
+    
+    ifullscreen = _s2_valid_devices[mydeviceid].fullscreen;
+    istereo = _s2_valid_devices[mydeviceid].stereo;
+  }
+#endif
+
   // name of our device driver - default none
   char *_s2_driver = NULL;
 
@@ -6226,6 +6314,9 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
    /* object mode control */
    _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+   if (options.interaction == OBJECT) {
+     _s2_object_trans.z = -3.0;
+   }
    int xi;
    for (xi = 0; xi < 16; xi++) {
      _s2_object_rot[xi] = 0.;
@@ -6446,49 +6537,6 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      pthread_create(&p_thread, NULL, remote_thread_sub, (void *)&a);
    }
 
-#if defined(S2MPICH)
-   options.interaction = OBJECT;
-
-   MPI_Init(NULL, NULL);
-   MPI_Comm_size(MPI_COMM_WORLD, &_s2mpi_world_size);
-   MPI_Comm_rank(MPI_COMM_WORLD, &_s2mpi_world_rank);
-   char processor_name[MPI_MAX_PROCESSOR_NAME];
-   int name_len;
-   MPI_Get_processor_name(processor_name, &name_len);
-   fprintf(stderr, "Hello world from processor %s, rank %d"
-	   " out of %d processors\n", processor_name,
-	   _s2mpi_world_rank, _s2mpi_world_size);
-
-   // read config file - select "rank"th row - and store p_a, p_b, p_c vectors defining
-   // BLC, TLC, BRC of this screen in world coordinates centred at origin of display system
-   // e.g. centre of CAVE2
-   FILE *config = fopen("s2config", "r");
-   if (!config) {
-     fprintf(stderr, "Failed to open required 's2config' file for S2MPICH mode.\n");
-     exit(-1);
-   } else {
-     int ln = 0;
-     char *configline = NULL;
-     size_t configlinecap= 0;
-     while (ln < (_s2mpi_world_rank+1) && !feof(config)) {
-       getline(&configline, &configlinecap, config);
-       ln++;
-     }
-     sscanf(configline, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-     	    &ln,
-     	    &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
-     	    &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
-     	    &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
-     fprintf(stderr, "read line: %s\n", configline);
-   }
-   fclose(config);
-
-   // based on s2config file, you now need to set a suitable initial
-   // object translation. Let's just hardcode for now at 3 metres on z.
-   _s2_object_trans.z = -3.0;
-
-#endif
-
    /* everything seems to be ok */
    return 1;
 }
@@ -6690,11 +6738,16 @@ int s2opend(char *idevice, int iargc, char **iargv) {
   int deviceid = _s2priv_find_device(devstr);
   if (deviceid < 0) {
     fprintf(stderr, "s2opend: device \"%s\" is unknown.\n", devstr);
-    return 0;
+    exit(-1);
   }
   
+  /* save the device string in case a device needs further info... */
+  strcpy(_s2_devstr, devstr);
+
+  /* call the standard s2open function */
   int nretval = s2open(_s2_valid_devices[deviceid].fullscreen,
 		       _s2_valid_devices[deviceid].stereo, iargc, iargv);
+
   return nretval;
 
 }
@@ -8913,17 +8966,19 @@ void drawView(char *projinfo, double camsca) {
     }
 #endif
     
-#if !defined(S2MPICH)
-    glLoadIdentity();
-    fprintf(stderr, "s2LookAt\n");
-    s2LookAt(camera.vp.x + camoff.x,
-	      camera.vp.y + camoff.y,
-	      camera.vp.z + camoff.z,
-	      camera.vp.x + camoff.x + camera.vd.x,
-	      camera.vp.y + camoff.y + camera.vd.y,
-	      camera.vp.z + camoff.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
-#endif    
+    //#if !defined(S2MPICH)
+    if (options.interaction != OBJECT) {
+      glLoadIdentity();
+      //fprintf(stderr, "s2LookAt\n");
+      s2LookAt(camera.vp.x + camoff.x,
+	       camera.vp.y + camoff.y,
+	       camera.vp.z + camoff.z,
+	       camera.vp.x + camoff.x + camera.vd.x,
+	       camera.vp.y + camoff.y + camera.vd.y,
+	       camera.vp.z + camoff.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
+    //#endif    
 
 #if defined(BUILDING_S2PLOT)
     /* get projections needed for coordinate trans */
@@ -8935,7 +8990,7 @@ void drawView(char *projinfo, double camsca) {
     MakeLighting();
     MakeMaterial();
     
-#if defined(S2MPICH)
+    //#if defined(S2MPICH)
     if (options.interaction == OBJECT) {
       glMatrixMode(GL_MODELVIEW);
       glPushMatrix();
@@ -8948,16 +9003,16 @@ void drawView(char *projinfo, double camsca) {
       glMultMatrixd(_s2_object_rot);
 
     }
-#endif
+    //#endif
 
     MakeGeometry(FALSE, FALSE, projinfo[0]);
 
-#if defined(S2MPICH)
+    //#if defined(S2MPICH)
     if (options.interaction == OBJECT) {
       glMatrixMode(GL_MODELVIEW);
       glPopMatrix();
     }
-#endif
+    //#endif
     
 #if defined(BUILDING_S2PLOT)
     /* draw the dynamic geometry */
@@ -8988,17 +9043,19 @@ void drawView(char *projinfo, double camsca) {
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
-#if !defined(S2MPICH)
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    s2LookAt(camera.vp.x,
-	      camera.vp.y,
-	      camera.vp.z,
-	      camera.vp.x + camera.vd.x,
-	      camera.vp.y + camera.vd.y,
-	      camera.vp.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
-#endif
+    //#if !defined(S2MPICH)
+    if (options.interaction != OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      s2LookAt(camera.vp.x,
+	       camera.vp.y,
+	       camera.vp.z,
+	       camera.vp.x + camera.vd.x,
+	       camera.vp.y + camera.vd.y,
+	       camera.vp.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
+    //#endif
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
     glGetDoublev(GL_PROJECTION_MATRIX, _s2_dragproj);
     glGetIntegerv(GL_VIEWPORT, _s2_dragview);
@@ -9057,17 +9114,19 @@ void handleView(int msx, int msy) {
 
     CreateProjection('c');
     glDrawBuffer(GL_BACK_LEFT);
-#if !defined(S2MPICH)
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    s2LookAt(camera.vp.x,
-	      camera.vp.y,
-	      camera.vp.z,
-	      camera.vp.x + camera.vd.x,
-	      camera.vp.y + camera.vd.y,
-	      camera.vp.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
-#endif
+    //#if !defined(S2MPICH)
+    if (options.interaction != OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      s2LookAt(camera.vp.x,
+	       camera.vp.y,
+	       camera.vp.z,
+	       camera.vp.x + camera.vd.x,
+	       camera.vp.y + camera.vd.y,
+	       camera.vp.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
+    //#endif
     glInitNames();
 
     // prepare for selection rather than drawing

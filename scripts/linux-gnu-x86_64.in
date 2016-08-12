@@ -48,12 +48,10 @@ set GFC=gfortran
 
 if ($S2MPI == yes) then
   set COMPPATH=/usr/lib64/mpi/gcc/openmpi/bin
-
   set COMMFLAGS="${COMMFLAGS} -DS2MPICH"
   set GCC=mpicc
   set GPP=mpicxx
   set GFC=mpifort
-
 endif 
 
 set S2OSTYPE="linux"

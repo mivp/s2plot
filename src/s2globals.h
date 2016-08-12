@@ -376,5 +376,16 @@ extern int _s2x_ywinpos;
 extern int _s2_ctext_count;
 extern _S2CACHEDTEXTURE *_s2_ctext;
 
+/* global store for MPI state and world display position */
+#if defined(S2MPICH)
+extern int _s2mpi_world_size, _s2mpi_world_rank;
+extern XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+extern int _s2mpi_pixels_width, _s2mpi_pixels_height;
+#endif
+
+/* store for the device string in case a device needs further info */
+extern char _s2_devstr[128];
+  
+
 
 #endif // S2GLOBALS_H

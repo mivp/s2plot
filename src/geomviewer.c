@@ -734,7 +734,16 @@ void HandleReshape(int w,int h)
  */
 void HandleDisplay(void) {
   MTX_LOCK(&mutex);
-  
+
+#if defined(BUILDING_S2PLOT)  
+  double tm = GetRunTime();  
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
+#endif
+#endif
+
   int i,j;
   static int framecount = -1;
   static double tstart; /* this is for frame rate counting */
@@ -744,14 +753,14 @@ void HandleDisplay(void) {
   /* Set the time the first time around */
   if (framecount < 0) {
     framecount = 0;
-    tstart = GetRunTime();
+    tstart = tm; /* GetRunTime(); */
 #if defined(BUILDING_S2PLOT)
     _s2x_ywinpos = s2winGet(S2_WINDOW_Y);
 #endif
   }
   
   if (tbegin < 0.) {
-    tbegin = GetRunTime();
+    tbegin = tm; /* GetRunTime(); */
   }
   
   if (_device_resize) {
@@ -770,7 +779,6 @@ void HandleDisplay(void) {
   unsigned int uj;
   
   /* loop over the panels */
-  double tm = GetRunTime();
   
   /* push expired events into the queue */
   for (i = 0; i < _s2_nevents; i++) {
@@ -1212,7 +1220,7 @@ void HandleDisplay(void) {
      Vary the resolution of spheres
   */
   framecount++;
-  tstop = GetRunTime();
+  tstop = tm; /* GetRunTime(); */
   if (tstop - tstart > 5) {
     interfacestate.framerate = framecount / (tstop - tstart);
     if (options.debug) {
@@ -3380,9 +3388,20 @@ void HandleIdle(void)
    }
 
 	// Is it time for another update 
-   if (tstart < 0) 
-      tstart = GetRunTime();
-   tstop = GetRunTime();
+   double tm = GetRunTime();  
+
+  // this is dangerous, this function may be called different times
+  // on the MPI network as a result of refresh cycles,system load etc.
+#if 0 && defined(S2MPICH)
+   if (_s2mpi_world_size > 1) {
+     MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+   }
+#endif
+
+   if (tstart < 0) {
+     tstart = tm; /* GetRunTime(); */
+   }
+   tstop = tm; /* GetRunTime(); */
    if (tstop - tstart > 1.0/options.targetfps) {
      s2winPostRedisplay();
       tstart = tstop;
@@ -5987,6 +6006,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
   //  _s2mpi_world_rank, _s2mpi_world_size);
   
   _s2mpi_pixels_width = _s2mpi_pixels_height = -1;
+  float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
   if (_s2mpi_world_size > 1) {
     /* for multihead, only useable interaction mode is OBJECT */
     options.interaction = OBJECT;
@@ -6023,9 +6043,11 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 	getline(&configline, &configlinecap, config);
 	ln++;
       }
-      sscanf(configline, "%d %s %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+      sscanf(configline, "%d %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
 	     &ln,
 	     mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
+	     &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
+	     &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
 	     &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
 	     &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
 	     &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
@@ -6435,26 +6457,36 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
 #if defined(BUILDING_S2PLOT)
    /* get screen constraints from environment or default */
-   char *panelstr;
    _s2_scr_x1 = 0.;
+   _s2_scr_x2 = 1.;
+   _s2_scr_y1 = 0.;
+   _s2_scr_y2 = 1.;
+
+#if defined(S2MPICH) // CANVASCANVAS
+   if (_s2mpi_world_size > 1) {
+     _s2_scr_x1 = -_s2mpi_canvas_x1 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     _s2_scr_x2 = _s2_scr_x1 + 1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     _s2_scr_y1 = -_s2mpi_canvas_y1 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+     _s2_scr_y2 = _s2_scr_y1 + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+   }
+#endif
+
+   char *panelstr;
    panelstr = getenv("S2PLOT_X1");
    if (panelstr) {
      _s2_scr_x1 = atof(panelstr);
    }
 
-   _s2_scr_x2 = 1.;
    panelstr = getenv("S2PLOT_X2");
    if (panelstr) {
      _s2_scr_x2 = atof(panelstr);
    }
 
-   _s2_scr_y1 = 0.;
    panelstr = getenv("S2PLOT_Y1");
    if (panelstr) {
      _s2_scr_y1 = atof(panelstr);
    }
 
-   _s2_scr_y2 = 1.;
    panelstr = getenv("S2PLOT_Y2");
    if (panelstr) {
      _s2_scr_y2 = atof(panelstr);
@@ -8368,16 +8400,26 @@ void _s2_fadeinout(void) {
     return;
   }
 
+  double tm = GetRunTime();  
+
+  // this is dangerous, this function may be called different times
+  // on the MPI network as a result of refresh cycles,system load etc.
+#if 0 && defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
+#endif
+
   // commence fade-in
   else if (_s2_fadestatus == 0) {
-    starttime = GetRunTime();
+    starttime = tm; /* GetRunTime(); */
     trans = 1.;
     _s2_fadestatus = 1;
   }
 
   // fading in...
   else if (_s2_fadestatus == 1) {
-    double del = GetRunTime() - starttime;
+    double del = tm /*GetRunTime()*/ - starttime;
     if (del > _s2_fadetime) {
       _s2_fadestatus = 2;
       trans = 0.;
@@ -8388,7 +8430,7 @@ void _s2_fadeinout(void) {
 
   // commence fade-out
   else if (_s2_fadestatus == 3) {
-    starttime = GetRunTime();
+    starttime = tm; /* GetRunTime(); */
     trans = 0.;
     _s2_fadestatus = 4;
     return;
@@ -8396,7 +8438,7 @@ void _s2_fadeinout(void) {
 
   // fading out...
   else if (_s2_fadestatus == 4) {
-    double del = GetRunTime() - starttime;
+    double del = tm /*GetRunTime()*/ - starttime;
     if (del > _s2_fadetime) {
       _s2_fadestatus = 5;
       trans = 1.;

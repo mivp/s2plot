@@ -11,7 +11,7 @@ use Math::Trig;
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 3;           # ahem, number of screens :-)
+$nscreens = 4;           # ahem, number of screens :-)
 $radius = 3800.0;        # radius (centre to edge of screen NOT centre of screen) in mm
 $device = "/S2MONO";
 $dx = 320;
@@ -50,7 +50,15 @@ for ($i = 0; $i < $nscreens; $i++) {
     $pc_z = $pa_z;
     $pc_y = +0.5 * $sy;
 
-    printf STDOUT "%d $device $dx $dy %f %f %f %f %f %f %f %f %f\n", $i, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
+    # my positon on global screen (0,0) -> (1,1)
+    $canvas_x1 = $i / $nscreens;
+    $canvas_x2 = ($i + 1) / $nscreens;
+    #$canvas_x1 = 0.0;
+    #$canvas_x2 = 1.0;
+    $canvas_y1 = 0.0;
+    $canvas_y2 = 1.0;
+
+    printf STDOUT "%d $device $dx $dy %f %f %f %f %f %f %f %f %f %f %f %f %f\n", $i, $canvas_x1, $canvas_y1, $canvas_x2, $canvas_y2, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
 }
 
 

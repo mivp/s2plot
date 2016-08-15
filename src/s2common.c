@@ -169,7 +169,7 @@ void RotateCamera(double ix,double iy,double iz,int source) {
       //XYZ vdo = apply4x4transformMatrix(_s2_object_rot, vd);
       computeRotationMatrix4x4(rx, vd, iz * delta);
       postmultiplyMatrix4x4(_s2_object_rot, rx);
-
+      
     } else {
       camera.vu.x += iz * right.x * delta;
       camera.vu.y += iz * right.y * delta;
@@ -186,7 +186,9 @@ void RotateCamera(double ix,double iy,double iz,int source) {
       // left/right are rotations around the up vector (Yaw)
       computeRotationMatrix4x4(rx, camera.vu, -ix * delta);
       postmultiplyMatrix4x4(_s2_object_rot, rx);
-    } else if (ABS(iy) > EPSILON) {
+      
+    } 
+    if (ABS(iy) > EPSILON) {
       // up/down are rotations around the right vector (pitch)
       computeRotationMatrix4x4(rx, right, iy * delta);
       postmultiplyMatrix4x4(_s2_object_rot, rx);

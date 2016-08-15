@@ -381,6 +381,10 @@ extern _S2CACHEDTEXTURE *_s2_ctext;
 extern int _s2mpi_world_size, _s2mpi_world_rank;
 extern XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
 extern int _s2mpi_pixels_width, _s2mpi_pixels_height;
+extern float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
+extern float *_s2mpi_canvas_x1arr, *_s2mpi_canvas_x2arr, *_s2mpi_canvas_y1arr, *_s2mpi_canvas_y2arr;
+extern float *_s2mpi_scr_x1arr, *_s2mpi_scr_x2arr, *_s2mpi_scr_y1arr, *_s2mpi_scr_y2arr;
+extern XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
 #endif
 
 /* store for the device string in case a device needs further info */

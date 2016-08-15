@@ -290,8 +290,32 @@ void CreateProjection(int eye) {
 
     //fprintf(stderr, "Kooima Projection code\n");
     
-    // compute eye offset vector: parallel to right vector on screen
+    // to support panels we need to compute a projection for the visible
+    // section of this display screen. So rather than _s2mpi_pa, pb, pc,
+    // we must compute new pa, pb, pc that refer to the visible part of
+    // the active panel on this display screen. Argh.
+
+    float px1, px2, py1, py2;
+    px1 = _s2_panels[_s2_activepanel].x1;
+    /* do not clip - this totally ruins the purpose of allowing a single
+     * physical display to be a fraction of the display */
+    //px1 = (px1 < 0.0) ? 0.0 : (px1 > 1.0) ? 1.0 : px1;
+    px2 = _s2_panels[_s2_activepanel].x2;
+    //px2 = (px2 < 0.0) ? 0.0 : (px2 > 1.0) ? 1.0 : px2;
+    py1 = _s2_panels[_s2_activepanel].y1;
+    //py1 = (py1 < 0.0) ? 0.0 : (py1 > 1.0) ? 1.0 : py1;
+    py2 = _s2_panels[_s2_activepanel].y2;
+    //py2 = (py2 < 0.0) ? 0.0 : (py2 > 1.0) ? 1.0 : py2;
+    
+    XYZ ppa, ppb, ppc;
     XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);
+    XYZ screen_up = VectorSub(_s2mpi_pa, _s2mpi_pc);
+    ppa = VectorAdd(VectorAdd(_s2mpi_pa, VectorMul(screen_rgt, px1)),
+		    VectorMul(screen_up, py1));
+    ppb = VectorAdd(ppa, VectorMul(screen_rgt, px2-px1));
+    ppc = VectorAdd(ppa, VectorMul(screen_up, py2-py1));
+
+    // compute eye offset vector: parallel to right vector on screen
     Normalise(&screen_rgt);
     float ndfl    = near / camera.focallength;
     XYZ eye_delta = VectorMul(screen_rgt, 0.5 * camera.eyesep * ndfl);
@@ -307,7 +331,10 @@ void CreateProjection(int eye) {
     }
     near = 0.1; // fix near/far planes for this (CAVE2) mode
     far = 1000.0;
-    kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
+
+    //kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
+    // CANVASCANVAS
+    kooimaProjection(ppa, ppb, ppc, eye_pos, near, far);
     } else {
 #endif
 

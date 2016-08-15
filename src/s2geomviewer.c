@@ -297,6 +297,8 @@ void CreateProjection(int eye) {
 
     float px1, px2, py1, py2;
     px1 = _s2_panels[_s2_activepanel].x1;
+    /* do not clip - this totally ruins the purpose of allowing a single
+     * physical display to be a fraction of the display */
     //px1 = (px1 < 0.0) ? 0.0 : (px1 > 1.0) ? 1.0 : px1;
     px2 = _s2_panels[_s2_activepanel].x2;
     //px2 = (px2 < 0.0) ? 0.0 : (px2 > 1.0) ? 1.0 : px2;
@@ -312,8 +314,6 @@ void CreateProjection(int eye) {
 		    VectorMul(screen_up, py1));
     ppb = VectorAdd(ppa, VectorMul(screen_rgt, px2-px1));
     ppc = VectorAdd(ppa, VectorMul(screen_up, py2-py1));
-
-    
 
     // compute eye offset vector: parallel to right vector on screen
     Normalise(&screen_rgt);

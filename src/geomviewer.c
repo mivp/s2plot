@@ -2164,9 +2164,9 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
   if (!_s2_dynamicEnabled) {
     _s2_startDynamicGeometry(FALSE);
 
-    if (options.debug) {
-      fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
-    }
+    //if (options.debug) {
+    //  fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
+    //}
     MakeGeometry(FALSE, doscreen, eye);
     
     _s2_endDynamicGeometry();
@@ -6006,11 +6006,24 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
   //  _s2mpi_world_rank, _s2mpi_world_size);
   
   _s2mpi_pixels_width = _s2mpi_pixels_height = -1;
-  float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
+  //float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
   if (_s2mpi_world_size > 1) {
     /* for multihead, only useable interaction mode is OBJECT */
     options.interaction = OBJECT;
-    
+
+    /* allocate space for arrays of physical panel bounds */
+    _s2mpi_canvas_x1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_x2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_y1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_y2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_x1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_x2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_y1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_y2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_paarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pbarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pcarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+
     /* find config file name */
     char *cfg = strtok(_s2_devstr, "/"); // cfg = "S2MULTI"
     if (strcasecmp(cfg, "S2MULTI")) {
@@ -6029,32 +6042,83 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      */
     FILE *config = fopen(cfg, "r");
     char mydevice[32];
+    int ln = 0;
     if (!config) {
       fprintf(stderr, "Failed to open required 's2config' file for S2MULTI mode.\n");
       exit(-1);
     } else {
-      int ln = 0;
+      int line_read = 0;
       char *configline = NULL;
       size_t configlinecap= 0;
       // BIG ASSUMPTION: CONFIG FILE is in NODE ORDER as per MPI LAUNCH
       // i.e. first column of CONFIG file is in order, and corresponds to
       // MPI world ranks
-      while (ln < (_s2mpi_world_rank+1) && !feof(config)) {
+      getline(&configline, &configlinecap, config);
+      while (!feof(config) && (line_read < _s2mpi_world_size)) {
+	sscanf(configline, 
+	       "%d %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+	       &ln,
+	       mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
+	       &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
+	       &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
+	       &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
+	       &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
+	       &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
+	//fprintf(stderr, "read ln = %d, lineread = %d\n", ln, line_read);
+	if (ln != line_read) {
+	  fprintf(stderr, "config file is incorrect at line %d. Please fix.\n", 
+		  line_read);
+	  exit(-1);
+	}
+	
+	_s2mpi_canvas_x1arr[ln] = _s2mpi_canvas_x1;
+	_s2mpi_canvas_x2arr[ln] = _s2mpi_canvas_x2;
+	_s2mpi_canvas_y1arr[ln] = _s2mpi_canvas_y1;
+	_s2mpi_canvas_y2arr[ln] = _s2mpi_canvas_y2;
+
+
+	// store extent of global canvas relative to this display screen
+	_s2mpi_scr_x1arr[ln] = -_s2mpi_canvas_x1 / 
+	  (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+	_s2mpi_scr_x2arr[ln] = _s2mpi_scr_x1arr[ln] + 
+	  1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+	_s2mpi_scr_y1arr[ln] = -_s2mpi_canvas_y1 / 
+	  (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+	_s2mpi_scr_y2arr[ln] = _s2mpi_scr_y1arr[ln] 
+	  + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+
+	// store vectors to blc, brc, tlc of this display screen
+	_s2mpi_paarr[ln] = _s2mpi_pa;
+	_s2mpi_pbarr[ln] = _s2mpi_pb;
+	_s2mpi_pcarr[ln] = _s2mpi_pc;
+
+	line_read++;
 	getline(&configline, &configlinecap, config);
-	ln++;
       }
-      sscanf(configline, "%d %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-	     &ln,
-	     mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
-	     &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
-	     &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
-	     &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
-	     &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
-	     &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
-      fprintf(stderr, "read line: %s\n", configline);
+      //fprintf(stderr, "read line: %s\n", configline);
+    }
+    if (ln != _s2mpi_world_size-1) {
+      fprintf(stderr, "config file is not ordered properly!\n");
+      exit(-1);
     }
     fclose(config);
     
+    // install globals for this mpi node
+    _s2mpi_canvas_x1 = _s2mpi_canvas_x1arr[_s2mpi_world_rank];
+    _s2mpi_canvas_x2 = _s2mpi_canvas_x2arr[_s2mpi_world_rank];
+    _s2mpi_canvas_y1 = _s2mpi_canvas_y1arr[_s2mpi_world_rank];
+    _s2mpi_canvas_y2 = _s2mpi_canvas_y2arr[_s2mpi_world_rank];
+
+
+    _s2mpi_pa = _s2mpi_paarr[_s2mpi_world_rank];
+    _s2mpi_pb = _s2mpi_pbarr[_s2mpi_world_rank];
+    _s2mpi_pc = _s2mpi_pcarr[_s2mpi_world_rank];
+
+    _s2_scr_x1 = _s2mpi_scr_x1arr[_s2mpi_world_rank];
+    _s2_scr_x2 = _s2mpi_scr_x2arr[_s2mpi_world_rank];
+    _s2_scr_y1 = _s2mpi_scr_y1arr[_s2mpi_world_rank];
+    _s2_scr_y2 = _s2mpi_scr_y2arr[_s2mpi_world_rank];
+
     /*  now map mydevice to istereo and ifullscreen to use! */
     int mydeviceid = _s2priv_find_device(mydevice);
     if (mydeviceid < 0) {
@@ -6456,18 +6520,31 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    _s2prompt_y = 0.40;
 
 #if defined(BUILDING_S2PLOT)
-   /* get screen constraints from environment or default */
-   _s2_scr_x1 = 0.;
-   _s2_scr_x2 = 1.;
-   _s2_scr_y1 = 0.;
-   _s2_scr_y2 = 1.;
 
 #if defined(S2MPICH) // CANVASCANVAS
    if (_s2mpi_world_size > 1) {
-     _s2_scr_x1 = -_s2mpi_canvas_x1 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
-     _s2_scr_x2 = _s2_scr_x1 + 1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
-     _s2_scr_y1 = -_s2mpi_canvas_y1 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
-     _s2_scr_y2 = _s2_scr_y1 + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+     // done earlier in code and pulled here above.
+     //_s2_scr_x1 = -_s2mpi_canvas_x1 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     //_s2_scr_x2 = _s2_scr_x1 + 1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     //_s2_scr_y1 = -_s2mpi_canvas_y1 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+     //_s2_scr_y2 = _s2_scr_y1 + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+
+     // store for later use // Again ASSUMPTION that config file is in 
+     // order i.e. ln == _s2mpi_world_rank
+     //_s2mpi_scr_x1arr[_s2mpi_world_rank] = _s2_scr_x1;
+     //_s2mpi_scr_x2arr[_s2mpi_world_rank] = _s2_scr_x2;
+     //_s2mpi_scr_y1arr[_s2mpi_world_rank] = _s2_scr_y1;
+     //_s2mpi_scr_y2arr[_s2mpi_world_rank] = _s2_scr_y2;
+   } else {
+#endif
+
+     /* get screen constraints from environment or default */
+     _s2_scr_x1 = 0.;
+     _s2_scr_x2 = 1.;
+     _s2_scr_y1 = 0.;
+     _s2_scr_y2 = 1.;
+     
+#if defined(S2MPICH)
    }
 #endif
 
@@ -8989,6 +9066,85 @@ void drawView(char *projinfo, double camsca) {
     camoff = VectorMul(vright, camsca);
 #endif
 
+#if defined(S2MPICH) 
+    XYZ s2panel_centre = {0., 0., 0.};
+    XYZ canvas_centre = {0., 0., 0.};
+    if (_s2mpi_world_size > 1) {
+      // compute vector to centre of this s2plot panel, on 
+      // global display screen
+      // pcx, pcy = this panel centre in fractional coords along 
+      // global canvas viewport
+      // p0x, p0y = centre of global canvas
+      float pcx = 0.5 * (_s2_panels[spid].x1 + _s2_panels[spid].x2);
+      float pcy = 0.5 * (_s2_panels[spid].y1 + _s2_panels[spid].y2);
+      // this panel coordinate is in the local slaves display space
+      // where (0,0) is blc and (1,1) is trc. This panel coordinate 
+      // may be well outside this range. Let's convert the panel
+      // coordinate back into a coordinate in the range (0,1) on the
+      // global (multi-display) canvas. *then* look for the display 
+      // head it is on...
+      float ccx = _s2mpi_canvas_x1 + pcx * (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+      float ccy = _s2mpi_canvas_y1 + pcy * (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+      //fprintf(stderr, "Panel pcx, pcy = %f, %fl ccx, ccy = %f, %f\n", 
+      //      pcx, pcy, ccx, ccy);
+
+      float p0x = 0.5, p0y = 0.5;
+      int ii;
+      int foundpc = 0, foundp0 = 0;
+      for (ii = 0; (ii < _s2mpi_world_size) && !(foundpc && foundp0); ii++) {
+	if ((_s2mpi_canvas_x1arr[ii] <= ccx) &&
+	    (ccx <= _s2mpi_canvas_x2arr[ii]) &&
+	    (_s2mpi_canvas_y1arr[ii] <= ccy) &&
+	    (ccy <= _s2mpi_canvas_y2arr[ii])) {
+	  foundpc = 1;
+	  // fraction of THIS display screen to centre of panel
+	  float fracx = (ccx - _s2mpi_canvas_x1arr[ii]) / 
+	    (_s2mpi_canvas_x2arr[ii] - _s2mpi_canvas_x1arr[ii]);
+	  float fracy = (ccy - _s2mpi_canvas_y1arr[ii]) / 
+	    (_s2mpi_canvas_y2arr[ii] - _s2mpi_canvas_y1arr[ii]);
+	  // compute vector to centre ON THE PANEL it falls in
+	  s2panel_centre = VectorAdd(_s2mpi_paarr[ii], 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pbarr[ii]), fracx));;
+	  s2panel_centre = VectorAdd(s2panel_centre, 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pcarr[ii]), fracy));
+	  
+
+	  
+	} 
+	if ((_s2mpi_canvas_x1arr[ii] <= p0x) &&
+	    (p0x <= _s2mpi_canvas_x2arr[ii]) &&
+	    (_s2mpi_canvas_y1arr[ii] <= p0y) &&
+	    (p0y <= _s2mpi_canvas_y2arr[ii])) {
+	  foundp0 = 1;
+	  // fraction of THIS display screen to centre of whole canvas
+	  float fracx = (p0x - _s2mpi_canvas_x1arr[ii]) / 
+	    (_s2mpi_canvas_x2arr[ii] - _s2mpi_canvas_x1arr[ii]);
+	  float fracy = (p0y - _s2mpi_canvas_y1arr[ii]) / 
+	    (_s2mpi_canvas_y2arr[ii] - _s2mpi_canvas_y1arr[ii]);
+	  // compute vector to centre ON THE PANEL it falls in
+	  canvas_centre = VectorAdd(_s2mpi_paarr[ii], 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pbarr[ii]), fracx));;
+	  canvas_centre = VectorAdd(canvas_centre, 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pcarr[ii]), fracy));
+	  
+	}
+      }
+	  
+      if (!foundpc) {
+	fprintf(stderr, "did not find panel centre\n");
+      } else if (!foundp0) {
+	fprintf(stderr, "   did not find canvas centre\n");
+      } else {
+	if (_s2mpi_world_rank == 0) {
+	  //fprintf(stderr, "canvas_centre = %f,%f,%f; panel_centre = %f,%f,%f\n", 
+	  //	  canvas_centre.x, canvas_centre.y, canvas_centre.z,
+	  //	  s2panel_centre.x, s2panel_centre.y, s2panel_centre.z);
+	}
+      }
+      
+    }
+#endif
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     CreateProjection(projinfo[0]);
@@ -9032,11 +9188,38 @@ void drawView(char *projinfo, double camsca) {
     MakeLighting();
     MakeMaterial();
     
-    //#if defined(S2MPICH)
     if (options.interaction == OBJECT) {
       glMatrixMode(GL_MODELVIEW);
       glPushMatrix();
       glLoadIdentity();
+
+      // hack to allow for panels not centred in front of initial camera
+#if defined(S2MPICH) 
+      // 1. compute TRANSLATION in Y (CYLINDRICAL ASSUMPTION)
+      float dy = s2panel_centre.y - canvas_centre.y;
+      glTranslatef(0., dy, 0.);
+      
+      // 1. compute ROTATION around centre of world Y (CYLINDRICAL ASSUMPTION)
+      s2panel_centre.y = canvas_centre.y = 0.0;
+      Normalise(&s2panel_centre);
+      Normalise(&canvas_centre);
+      float costh = DotProduct(s2panel_centre, canvas_centre);
+      float rrad = acos(costh);
+      double rx[16];
+      XYZ up = {0., 1., 0.};
+      //fprintf(stderr, "rotation is %f degrees\n", rrad * 180.0 / M_PI);
+      
+      // sign of rotation
+      XYZ tmp = CrossProduct(canvas_centre, s2panel_centre);
+      XYZ tup = {0., 1., 0.};
+      if (DotProduct(tmp, tup) < 0.0) {
+	rrad = -rrad;
+      }
+      
+
+      computeRotationMatrix4x4(rx, up, rrad);
+      glMultMatrixd(rx);
+#endif
 
       // translate modelview matrix with _s2_object_trans
       glTranslatef(_s2_object_trans.x, _s2_object_trans.y, _s2_object_trans.z);
@@ -9045,7 +9228,6 @@ void drawView(char *projinfo, double camsca) {
       glMultMatrixd(_s2_object_rot);
 
     }
-    //#endif
 
     MakeGeometry(FALSE, FALSE, projinfo[0]);
 

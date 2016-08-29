@@ -335,6 +335,7 @@ void CreateProjection(int eye) {
     //kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
     // CANVASCANVAS
     kooimaProjection(ppa, ppb, ppc, eye_pos, near, far);
+
     } else {
 #endif
 

@@ -1594,7 +1594,7 @@ void pushVRMLname(char *iname);
  ***********************************************************************
  */
 
-
+  void s2mhsync(void *ptr, size_t size);
 
 #if defined(S2_3D_TEXTURES)
   /* textured polygon */

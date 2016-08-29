@@ -918,6 +918,7 @@ void HandleDisplay(void) {
       MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
       MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
       MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)&_s2_handle_vis, sizeof(_s2_handle_vis), MPI_BYTE, 0, MPI_COMM_WORLD);
     }
 #endif 
    
@@ -5616,12 +5617,13 @@ void _s2priv_drawBillboards(void) {
   SetVectorLength(&RGT, 7.0);
   Normalise(&VIEW);
 
+  int i = 0;
+
 #if defined(POINTER_SORT)
   static _S2BBOARD **bbptr = NULL;
   bbptr = (_S2BBOARD **)realloc(bbptr, nbboard * sizeof(_S2BBOARD *));
 #endif
 
-  int i = 0;
 #if defined(S2OPENMP)
   //int tid, nthreads;
 #pragma omp parallel shared(bboard,CAMP,nbboard) private(i)
@@ -5677,6 +5679,27 @@ void _s2priv_drawBillboards(void) {
   XYZ nUP = UP;
   Normalise(&nUP);
   XYZ tmpb, dilRGT, dilUP;
+
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    double bbmodel[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, bbmodel);
+    RGT.x = bbmodel[0];
+    RGT.y = bbmodel[4];
+    RGT.z = bbmodel[8];
+    UP.x = bbmodel[1];
+    UP.y = bbmodel[5];
+    UP.z = bbmodel[9];
+
+    nRGT = RGT;
+    Normalise(&nRGT);
+    nUP = UP;
+    Normalise(&nUP);
+    VIEW = CrossProduct(nUP, nRGT);
+    Normalise(&VIEW);
+  }
+#endif
+
 
   int j, bi;
 #if defined(S2OPENMP)
@@ -5805,7 +5828,7 @@ void _s2priv_drawBillboards(void) {
       bj--;
     }
     j--;
-    //j = i;
+    // j = i;
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, 0, _bb_vertices+(i*3*4));
@@ -11188,4 +11211,12 @@ XYZ _s2priv_pmin(void) {
 }
 XYZ _s2priv_pmax(void) {
   return pmax;
+}
+
+void s2mhsync(void *ptr, size_t size) {
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast(ptr, size, MPI_BYTE, 0, MPI_COMM_WORLD);
+  }
+#endif
 }

@@ -917,7 +917,16 @@ void HandleDisplay(void) {
 #if defined(S2MPICH)
     if (_s2mpi_world_size > 1) {
       MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
+      int ssw = 0, ssh = 0;
+      if (_s2mpi_world_rank > 0) {
+	ssw = options.screenwidth;
+	ssh = options.screenheight;
+      }
       MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
+      if (_s2mpi_world_rank > 0) {
+	options.screenwidth = ssw;
+	options.screenheight = ssh;
+      }
       MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
       MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
       MPI_Bcast((void *)&_s2_handle_vis, sizeof(_s2_handle_vis), MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -9162,7 +9171,8 @@ void drawView(char *projinfo, double camsca) {
 	if ((_s2mpi_canvas_x1arr[ii] <= ccx) &&
 	    (ccx <= _s2mpi_canvas_x2arr[ii]) &&
 	    (_s2mpi_canvas_y1arr[ii] <= ccy) &&
-	    (ccy <= _s2mpi_canvas_y2arr[ii])) {
+	    (ccy <= _s2mpi_canvas_y2arr[ii]) && //
+	    !_s2mpi_ismaster[ii]) {
 	  foundpc = 1;
 	  // fraction of THIS display screen to centre of panel
 	  float fracx = (ccx - _s2mpi_canvas_x1arr[ii]) / 
@@ -9181,7 +9191,8 @@ void drawView(char *projinfo, double camsca) {
 	if ((_s2mpi_canvas_x1arr[ii] <= p0x) &&
 	    (p0x <= _s2mpi_canvas_x2arr[ii]) &&
 	    (_s2mpi_canvas_y1arr[ii] <= p0y) &&
-	    (p0y <= _s2mpi_canvas_y2arr[ii])) {
+	    (p0y <= _s2mpi_canvas_y2arr[ii]) && //) {
+	    !_s2mpi_ismaster[ii]) {
 	  foundp0 = 1;
 	  // fraction of THIS display screen to centre of whole canvas
 	  float fracx = (p0x - _s2mpi_canvas_x1arr[ii]) / 

@@ -571,9 +571,11 @@ void CreateOpenGL(void)
 
   // set default screen dimensions
 #if defined(S2MPICH)
-  if (_s2mpi_pixels_width > -1 && _s2mpi_pixels_height > -1) {
-    options.screenwidth = _s2mpi_pixels_width;
-    options.screenheight = _s2mpi_pixels_height;
+  //if (_s2mpi_pixels_width > -1 && _s2mpi_pixels_height > -1) {
+  if (_s2mpi_pwarr[_s2mpi_world_rank] > -1 &&
+      _s2mpi_pharr[_s2mpi_world_rank] > -1) {
+    options.screenwidth = _s2mpi_pwarr[_s2mpi_world_rank]; //_s2mpi_pixels_width;
+    options.screenheight = _s2mpi_pharr[_s2mpi_world_rank]; //_s2mpi_pixels_height;
   } else {
 #endif
     options.screenwidth  = 800;
@@ -2180,7 +2182,12 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
 if (_s2_dynamicEnabled) {
   /* draw the billboards */
   if (nbboard) {
-    _s2priv_drawBillboards();
+    //fprintf(stderr, "doscreen = %d and nbboard = %d\n", doscreen, nbboard);
+    // draw 3d billboards
+    _s2priv_drawBillboards(doscreen);
+    // draw screen billboards 
+    // What is a screen billboard? NOT YET IMPLEMENTED
+    //_s2priv_drawBillboards(TRUE);
   }
 
   if (nbbset) {
@@ -2189,6 +2196,7 @@ if (_s2_dynamicEnabled) {
   
   /* draw the handles if they are visible */
   if (_s2_handle_vis && nhandle) {
+    // QUERY: maybe just need _s2priv_drawHandles(doscreen) ???
     // draw 3d handles
     _s2priv_drawHandles(FALSE);
     // draw screen handles
@@ -5604,8 +5612,17 @@ void _s2priv_drawBillboards(void) {
 #else 
 
 /* draw the billboards */
-void _s2priv_drawBillboards(void) {
+void _s2priv_drawBillboards(int doscreen) {
   /* billboard texture method, correctly sorted  */
+
+  // honestly, why support screen-based billboards? This is not useful
+  // in general because you could just use textured quads on the 
+  // screen. The only useful option would be if you needed billoards on
+  // "c" screen but not "l" for example. For now, BARF.
+  if (doscreen) {
+    //fprintf(stderr, "Screen-geometry billboards are NOT presently supported.\n");
+    return;
+  }
 
   // 1. calculate distance to camera for each bboard
   static XYZ CAMP, UP, VIEW, RGT;
@@ -5798,7 +5815,24 @@ void _s2priv_drawBillboards(void) {
   glEnable(GL_TEXTURE_2D);
 
   for (i = 0; i < nbboard; i++) {
-  
+
+    /*
+    if ((doscreen && !strlen(bboard[i].whichscreen)) ||
+	(!doscreen && strlen(bboard[i].whichscreen))) {
+      continue;
+    }
+    if (doscreen && !(strlen(_s2_doingScreen) &&
+		      strstr(bboard[i].whichscreen, _s2_doingScreen))) {
+      continue;
+    }
+    */
+    
+    if (strlen(bboard[i].whichscreen)) {
+      // screen billboards are ignored / meaningless
+      continue;
+    }
+
+
     // SORT RESULTS IN ORDERED LIST: CLOSEST TO FURTHEST
     // SO HERE WE INVERT THE ORDER AS WE WANT TO DRAW FARTHEST FIRST
     // [for indexing into bboard[...] array only!]
@@ -5821,6 +5855,7 @@ void _s2priv_drawBillboards(void) {
     int j = i+1;
     int bj = nbboard-1-j;
     while ((j < nbboard) && 
+	   !(strlen(bboard[i].whichscreen)) && 
 	   // (j-i < 5000)) &&
 	   (bboard[bj].trans == bboard[bi].trans) &&
 	   (bboard[bj].texid == bboard[bi].texid)) {
@@ -6046,6 +6081,9 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
     _s2mpi_paarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
     _s2mpi_pbarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
     _s2mpi_pcarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pwarr = (int *)malloc(_s2mpi_world_size * sizeof(int));
+    _s2mpi_pharr = (int *)malloc(_s2mpi_world_size * sizeof(int));
+    _s2mpi_ismaster = (int *)malloc(_s2mpi_world_size * sizeof(int));
 
     /* find config file name */
     char *cfg = strtok(_s2_devstr, "/"); // cfg = "S2MULTI"
@@ -6077,10 +6115,11 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
       // i.e. first column of CONFIG file is in order, and corresponds to
       // MPI world ranks
       getline(&configline, &configlinecap, config);
+      char type;
       while (!feof(config) && (line_read < _s2mpi_world_size)) {
 	sscanf(configline, 
-	       "%d %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-	       &ln,
+	       "%d %c %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+	       &ln, &type,
 	       mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
 	       &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
 	       &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
@@ -6094,6 +6133,11 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 	  exit(-1);
 	}
 	
+	_s2mpi_ismaster[ln] = (type == 'm') ? 1 : 0;
+
+	_s2mpi_pwarr[ln] = _s2mpi_pixels_width;
+	_s2mpi_pharr[ln] = _s2mpi_pixels_height;
+
 	_s2mpi_canvas_x1arr[ln] = _s2mpi_canvas_x1;
 	_s2mpi_canvas_x2arr[ln] = _s2mpi_canvas_x2;
 	_s2mpi_canvas_y1arr[ln] = _s2mpi_canvas_y1;
@@ -9260,10 +9304,11 @@ void drawView(char *projinfo, double camsca) {
       glPopMatrix();
     }
     //#endif
-    
+
 #if defined(BUILDING_S2PLOT)
     /* draw the dynamic geometry */
 
+#if (1)
     // draw the screen geometry
     strcpy(_s2_doingScreen, projinfo);
     glDisable(GL_LIGHTING);
@@ -9273,6 +9318,7 @@ void drawView(char *projinfo, double camsca) {
     glEnable(GL_LIGHTING);
     options.rendermode = tmp;
     strcpy(_s2_doingScreen, "");
+#endif
 
     // draw the panel surround
     if (_s2_npanels > 1) { 	
@@ -9290,7 +9336,6 @@ void drawView(char *projinfo, double camsca) {
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
-    //#if !defined(S2MPICH)
     if (options.interaction != OBJECT) {
       glMatrixMode(GL_MODELVIEW);
       glLoadIdentity();
@@ -9302,11 +9347,9 @@ void drawView(char *projinfo, double camsca) {
 	       camera.vp.z + camera.vd.z,
 	       camera.vu.x,camera.vu.y,camera.vu.z);
     }
-    //#endif
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
     glGetDoublev(GL_PROJECTION_MATRIX, _s2_dragproj);
     glGetIntegerv(GL_VIEWPORT, _s2_dragview);
-    // done
 
   }
   xs2cp(waspanel);

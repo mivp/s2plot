@@ -150,7 +150,7 @@ extern "C" {
   void _s2priv_drawHandles(int doscreen);
   
   /* draw the billboards */
-  void _s2priv_drawBillboards(void);
+  void _s2priv_drawBillboards(int doscreen);
   
   /* draw billboard sets */
   void _s2priv_drawBBsets(void);

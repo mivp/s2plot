@@ -11,7 +11,7 @@ use Math::Trig;
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 4;           # ahem, number of screens :-)
+$nscreens = 3;           # ahem, number of screens :-)
 $screenx = 320;          # npixels in x 
 $device = "/S2MONO";
 

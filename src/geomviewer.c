@@ -570,19 +570,18 @@ void CreateOpenGL(void)
   s2winInitDisplayMode(options.stereo, _s2x_ati);
 
   // set default screen dimensions
+  options.screenwidth  = 800;
+  options.screenheight = 600;
 #if defined(S2MPICH)
-  //if (_s2mpi_pixels_width > -1 && _s2mpi_pixels_height > -1) {
-  if (_s2mpi_pwarr[_s2mpi_world_rank] > -1 &&
-      _s2mpi_pharr[_s2mpi_world_rank] > -1) {
-    options.screenwidth = _s2mpi_pwarr[_s2mpi_world_rank]; //_s2mpi_pixels_width;
-    options.screenheight = _s2mpi_pharr[_s2mpi_world_rank]; //_s2mpi_pixels_height;
-  } else {
-#endif
-    options.screenwidth  = 800;
-    options.screenheight = 600;
-#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    if (_s2mpi_pwarr[_s2mpi_world_rank] > -1 &&
+	_s2mpi_pharr[_s2mpi_world_rank] > -1) {
+      options.screenwidth = _s2mpi_pwarr[_s2mpi_world_rank]; //_s2mpi_pixels_width;
+      options.screenheight = _s2mpi_pharr[_s2mpi_world_rank]; //_s2mpi_pixels_height;
+    }
   }
 #endif
+
 
 #if defined(BUILDING_S2PLOT)
   {
@@ -916,16 +915,29 @@ void HandleDisplay(void) {
     // now let's share the master camera with the slaves...
 #if defined(S2MPICH)
     if (_s2mpi_world_size > 1) {
+      double sses = 0.0;
+      if (_s2mpi_world_rank > 0) {
+	sses = camera.eyesep;
+      }
       MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
+      if (_s2mpi_world_rank > 0) {
+	camera.eyesep = sses;
+      }
+
       int ssw = 0, ssh = 0;
+      int ssst = 0, ssfs = 0;
       if (_s2mpi_world_rank > 0) {
 	ssw = options.screenwidth;
 	ssh = options.screenheight;
+	ssst = options.stereo;
+	ssfs = options.fullscreen;
       }
       MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
       if (_s2mpi_world_rank > 0) {
 	options.screenwidth = ssw;
 	options.screenheight = ssh;
+	options.stereo = ssst;
+	options.fullscreen = ssfs;
       }
       MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
       MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -6112,6 +6124,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      */
     FILE *config = fopen(cfg, "r");
     char mydevice[32];
+    mydevice[0] = '\0';
     int ln = 0;
     if (!config) {
       fprintf(stderr, "Failed to open required 's2config' file for S2MULTI mode.\n");
@@ -6125,11 +6138,12 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
       // MPI world ranks
       getline(&configline, &configlinecap, config);
       char type;
+      char idev[32];
       while (!feof(config) && (line_read < _s2mpi_world_size)) {
 	sscanf(configline, 
 	       "%d %c %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
 	       &ln, &type,
-	       mydevice, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
+	       idev, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
 	       &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
 	       &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
 	       &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
@@ -6142,6 +6156,10 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 	  exit(-1);
 	}
 	
+	if (ln == _s2mpi_world_rank) {
+	  strcpy(mydevice, idev);
+	}
+
 	_s2mpi_ismaster[ln] = (type == 'm') ? 1 : 0;
 
 	_s2mpi_pwarr[ln] = _s2mpi_pixels_width;
@@ -6200,6 +6218,9 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
     if (mydeviceid < 0) {
       fprintf(stderr, "s2opend: device \"%s\" from config file is unknown.\n", mydevice);
       exit(-1);
+    } else {
+      fprintf(stderr, "s2opend: loading device %d for named device %s\n",
+	      mydeviceid, mydevice);
     }
     
     ifullscreen = _s2_valid_devices[mydeviceid].fullscreen;
@@ -6716,11 +6737,19 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
        _s2_remoteport = 0;
      }
    }
+   // only start remote thread socket on master node of MPI runs
+#if defined(S2MPICH)
+   if (_s2mpi_world_rank == 0) {
+     //_s2_remoteport += (_s2mpi_world_rank) * S2MPIMAXNODES;
+#endif
    if (_s2_remoteport) {
      pthread_t p_thread;
      int a = 1;
      pthread_create(&p_thread, NULL, remote_thread_sub, (void *)&a);
    }
+#if defined(S2MPICH)
+   }
+#endif
 
    /* everything seems to be ok */
    return 1;

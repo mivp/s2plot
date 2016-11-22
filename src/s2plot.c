@@ -1767,6 +1767,10 @@ void _s2priv_bb(XYZ iP, XYZ iStretch, XYZ ioffset,
   bboard_base[0].alpha = ialpha;
   bboard_base[0].trans = itrans;
   strcpy(bboard_base[0].whichscreen, _s2_whichscreen);
+  bboard_base[0].whichscreen[strlen(_s2_whichscreen)] = '\0';
+  if (strlen(bboard_base[0].whichscreen)) {
+    fprintf(stderr, "adding billboard with screen: %s\n", bboard_base[0].whichscreen);
+  }
   strncpy(bboard_base[0].VRMLname, _s2_VRMLnames[_s2_currVRMLidx], MAXVRMLLEN);
   bboard_base[0].VRMLname[MAXVRMLLEN-1] = '\0';
 

@@ -385,6 +385,8 @@ extern float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas
 extern float *_s2mpi_canvas_x1arr, *_s2mpi_canvas_x2arr, *_s2mpi_canvas_y1arr, *_s2mpi_canvas_y2arr;
 extern float *_s2mpi_scr_x1arr, *_s2mpi_scr_x2arr, *_s2mpi_scr_y1arr, *_s2mpi_scr_y2arr;
 extern XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
+extern int *_s2mpi_pwarr, *_s2mpi_pharr; 
+extern int *_s2mpi_ismaster;
 #endif
 
 /* store for the device string in case a device needs further info */

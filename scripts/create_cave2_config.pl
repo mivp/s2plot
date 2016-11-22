@@ -11,11 +11,11 @@ use Math::Trig;
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 4;           # ahem, number of screens :-)
+$nscreens = 8;           # ahem, number of screens :-)
 $radius = 3800.0;        # radius (centre to edge of screen NOT centre of screen) in mm
 $device = "/S2MONO";
-$dx = 320;
-$dy = 720;
+$dx = 1366;
+$dy = 3072;
 
 # convert to metres
 $diagonal /= 1000.0;

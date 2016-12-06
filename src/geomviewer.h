@@ -75,11 +75,12 @@ void _s2warnk(char key, char *messg, ...);
 void HandleDisplay(void);
 
 void CreateOpenGL(void);
-void MakeGeometry(int, int);
+void MakeGeometry(int, int, int);
 void MakeLighting(void);
 void MakeMaterial(void);
 void HandleReshape(int,int);
 void HandleKeyboard(unsigned char key,int x, int y);
+float getFramerate();
 void _s2_process_key(unsigned char key,int x, int y, int modifiers);
 void HandleSpecialKeyboard(int key,int x, int y);
 void RotateCamera(double,double,double,int);

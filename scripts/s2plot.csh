@@ -54,6 +54,10 @@
 # Set to "no" or "yes" without quotes to choose whether shared or static
 # libraries are used when linking.  Change this with care.
 
+# S2MPI
+# Set to "no" or "yes" without quotes to choose whether S2PLOT is built
+# with MPICH and thus support for multihead devices (/S2MULTI)
+
 # S2FREEGLUT
 # Set to "no" or "yes" without quotes to choose whether the re-entrant
 # s2disp function will be used on Linux systems that use the freeglut
@@ -88,6 +92,15 @@ if (!(${?S2SHARED})) then
 endif
 if (($S2SHARED != yes) && ($S2SHARED != no)) then
   echo S2PLOT environment variable S2SHARED must be "yes" or "no".
+  exit -1
+endif
+
+# set S2MPI to yes to build with MPI support.
+if (!(${?S2MPI})) then
+  set S2MPI=no
+endif
+if (($S2MPI != yes) && ($S2MPI != no)) then
+  echo S2PLOT environment variable S2MPI must be "yes" or "no".
   exit -1
 endif
 

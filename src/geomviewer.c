@@ -67,6 +67,10 @@ void(*_device_draw)(CAMERA cam);
 void(*_device_resize)(void);
 int(*_device_keybd)(char);
 
+#if defined (S2MPICH)
+#include <mpi.h>
+#endif
+
 #if defined(S2OPENMP) && !defined(BUILDING_VIEWER)
 //#define POINTER_SORT 1
 #include <omp.h>
@@ -268,7 +272,7 @@ unsigned int _s2priv_setupTexture(int width, int height,
 unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
 				  BITMAP4 *bitmap, int usemipmaps);
 BITMAP4 *_s2priv_redXtexture(int w, int h);
-BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d);
+BITMAP4 *_s2priv_blankTexture3d(int w, int h, int d);
 #endif
 
 #if defined(BUILDING_S2PLOT)
@@ -544,7 +548,7 @@ int main(int argc,char **argv) {
   options.camerahome = camera;
   if (strlen(viewname) > 0)
     ReadViewFile(viewname);
-  MakeGeometry(TRUE, FALSE);
+  MakeGeometry(TRUE, FALSE, 'c');
   if (options.autopilot) 
     options.autopilot = AutoPilot(0,autopilotname);
   
@@ -568,6 +572,17 @@ void CreateOpenGL(void)
   // set default screen dimensions
   options.screenwidth  = 800;
   options.screenheight = 600;
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    if (_s2mpi_pwarr[_s2mpi_world_rank] > -1 &&
+	_s2mpi_pharr[_s2mpi_world_rank] > -1) {
+      options.screenwidth = _s2mpi_pwarr[_s2mpi_world_rank]; //_s2mpi_pixels_width;
+      options.screenheight = _s2mpi_pharr[_s2mpi_world_rank]; //_s2mpi_pixels_height;
+    }
+  }
+#endif
+
+
 #if defined(BUILDING_S2PLOT)
   {
     char *widthstr = getenv("S2PLOT_WIDTH");
@@ -720,7 +735,16 @@ void HandleReshape(int w,int h)
  */
 void HandleDisplay(void) {
   MTX_LOCK(&mutex);
-  
+
+#if defined(BUILDING_S2PLOT)  
+  double tm = GetRunTime();  
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
+#endif
+#endif
+
   int i,j;
   static int framecount = -1;
   static double tstart; /* this is for frame rate counting */
@@ -730,14 +754,14 @@ void HandleDisplay(void) {
   /* Set the time the first time around */
   if (framecount < 0) {
     framecount = 0;
-    tstart = GetRunTime();
+    tstart = tm; /* GetRunTime(); */
 #if defined(BUILDING_S2PLOT)
     _s2x_ywinpos = s2winGet(S2_WINDOW_Y);
 #endif
   }
   
   if (tbegin < 0.) {
-    tbegin = GetRunTime();
+    tbegin = tm; /* GetRunTime(); */
   }
   
   if (_device_resize) {
@@ -756,7 +780,6 @@ void HandleDisplay(void) {
   unsigned int uj;
   
   /* loop over the panels */
-  double tm = GetRunTime();
   
   /* push expired events into the queue */
   for (i = 0; i < _s2_nevents; i++) {
@@ -804,50 +827,124 @@ void HandleDisplay(void) {
       continue;
     }
     xs2cp(spid);
-    
+
     /* set the camera if there is an explicitly set position */
     if (_s2_cameraset) {
       _s2priv_CameraSet();
     }
     
-    /* modify the camera if we are in FLY mode */
-    if (options.interaction  == FLY) {
-      currRoC_x = (0.9 * currRoC_x + 0.1 * targetRoC_x);
-      currRoC_y = (0.9 * currRoC_y + 0.1 * targetRoC_y);
-      RotateCamera(currRoC_x, 0., 0., MOUSECONTROL);
-      RotateCamera(0., currRoC_y, 0., MOUSECONTROL);
-    }
-    
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
 #endif
     
-    /* handle autopilot mode - what does this mean??? */
-    if (options.autopilot) {
-      options.autopilot = AutoPilot(1,"");
+      /* modify the camera if we are in FLY mode */
+      if (options.interaction  == FLY) {
+	currRoC_x = (0.9 * currRoC_x + 0.1 * targetRoC_x);
+	currRoC_y = (0.9 * currRoC_y + 0.1 * targetRoC_y);
+	RotateCamera(currRoC_x, 0., 0., MOUSECONTROL);
+	RotateCamera(0., currRoC_y, 0., MOUSECONTROL);
+      }
+      
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
     }
+#endif
+
+#endif // BUILDING_S2PLOT section
+    
+    
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      /* handle autopilot mode - what does this mean??? */
+      if (options.autopilot) {
+	options.autopilot = AutoPilot(1,"");
+      }
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
     
     /* modify the camera if we are in autospin mode */
 #if defined(BUILDING_S2PLOT)
-    float tmpcs = ss2qcs();
-    ss2scs(ss2qss());
-#endif 
+    float tmpcs;
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      tmpcs = ss2qcs();
+      ss2scs(ss2qss());
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
+#endif // BUILDING_S2PLOT 
 
-    if ((int)options.autospin.x != 0) {
-      RotateCamera(options.autospin.x/5,0.0,0.0,KEYBOARDCONTROL);
-    }
-    if ((int)options.autospin.y != 0) {
-      RotateCamera(0.0,options.autospin.y/5,0.0,KEYBOARDCONTROL);
-    }
-    if ((int)options.autospin.z != 0) {
-      RotateCamera(0.0,0.0,options.autospin.z/5,KEYBOARDCONTROL);
-    }
+
+#if defined(S2MPICH)
+    if (_s2mpi_world_rank == 0) {
+      // master: update the camera
+#endif   
+      if ((int)options.autospin.x != 0) {
+	RotateCamera(options.autospin.x/5,0.0,0.0,KEYBOARDCONTROL);
+      }
+      if ((int)options.autospin.y != 0) {
+	RotateCamera(0.0,options.autospin.y/5,0.0,KEYBOARDCONTROL);
+      }
+      if ((int)options.autospin.z != 0) {
+	RotateCamera(0.0,0.0,options.autospin.z/5,KEYBOARDCONTROL);
+      }
 #if defined(BUILDING_S2PLOT)
-    ss2scs(tmpcs);
+      ss2scs(tmpcs);
 #endif
     
     /* handle flying mode ??? */
-    if (ABS(camera.speed) > EPSILON) 
-      FlyCamera(camera.speed);
-    
+      if (ABS(camera.speed) > EPSILON) 
+	FlyCamera(camera.speed);
+#if defined(S2MPICH)
+    } else {
+      // slave: do nothing ... camera will come in good time from the master :-)
+    }
+#endif
+
+    // now let's share the master camera with the slaves...
+#if defined(S2MPICH)
+    if (_s2mpi_world_size > 1) {
+      double sses = 0.0;
+      if (_s2mpi_world_rank > 0) {
+	sses = camera.eyesep;
+      }
+      MPI_Bcast((void *)&camera, sizeof(camera), MPI_BYTE, 0, MPI_COMM_WORLD);
+      if (_s2mpi_world_rank > 0) {
+	camera.eyesep = sses;
+      }
+
+      int ssw = 0, ssh = 0;
+      int ssst = 0, ssfs = 0;
+      if (_s2mpi_world_rank > 0) {
+	ssw = options.screenwidth;
+	ssh = options.screenheight;
+	ssst = options.stereo;
+	ssfs = options.fullscreen;
+      }
+      MPI_Bcast((void *)&options, sizeof(options), MPI_BYTE, 0, MPI_COMM_WORLD);
+      if (_s2mpi_world_rank > 0) {
+	options.screenwidth = ssw;
+	options.screenheight = ssh;
+	options.stereo = ssst;
+	options.fullscreen = ssfs;
+      }
+      MPI_Bcast((void *)&_s2_object_trans, sizeof(_s2_object_trans), MPI_BYTE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)_s2_object_rot, 16, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast((void *)&_s2_handle_vis, sizeof(_s2_handle_vis), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+#endif 
+   
 #if defined(BUILDING_S2PLOT)
 
     /* update the dynamic geometry lists for this panel */
@@ -999,16 +1096,20 @@ void HandleDisplay(void) {
 	glViewport(
 		   -i*options.screenwidth,-j*options.screenheight,
 		   options.windowdump*options.screenwidth,options.windowdump*options.screenheight);
-	glMatrixMode(GL_MODELVIEW);
 	glDrawBuffer(GL_BACK_LEFT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glLoadIdentity();
-	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
-		  camera.focus.x,camera.focus.y,camera.focus.z,
-		  camera.vu.x,camera.vu.y,camera.vu.z);
+	//#if !defined(S2MPICH)
+	if (options.interaction != OBJECT) {
+	  glMatrixMode(GL_MODELVIEW);
+	  glLoadIdentity();
+	  s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
+		   camera.focus.x,camera.focus.y,camera.focus.z,
+		   camera.vu.x,camera.vu.y,camera.vu.z);
+	}
+	//#endif
 	MakeLighting();
 	MakeMaterial();
-	MakeGeometry(FALSE, FALSE);
+	MakeGeometry(FALSE, FALSE, 'c');
 	DrawExtras();
 	glFlush();
 	if (options.stereo == ACTIVESTEREO)
@@ -1143,7 +1244,7 @@ void HandleDisplay(void) {
      Vary the resolution of spheres
   */
   framecount++;
-  tstop = GetRunTime();
+  tstop = tm; /* GetRunTime(); */
   if (tstop - tstart > 5) {
     interfacestate.framerate = framecount / (tstop - tstart);
     if (options.debug) {
@@ -1157,81 +1258,6 @@ void HandleDisplay(void) {
   MTX_ULCK(&mutex);
 }
 
-#if defined(S2_NO_S2GEOMVIEWER)
-/*
-	Create the projection matrix
-	Support perspective and parallel.
-	eye is left or right for stereo
-*/
-void CreateProjection(int eye) {
-  double dist,ratio,radians=0,wd2,ndfl;
-  double left,right,top,bottom,near,far;
-  
-  // Sort out near and far cutting plane for ultra stereo
-#if defined(BUILDING_S2PLOT)
-  near = VectorLength(pmin,pmax) / 10;
-  //near *= 0.01;
-  near /= _s2_nearfar_expand;
-  far = MAX(camera.focallength,VectorLength(pmin,pmax)) * 20. * 
-    _s2_nearfar_expand;
-  if (options.stereo != NOSTEREO) {
-    near = camera.focallength / (5. * _s2_nearfar_expand);
-  }
-#else
-  near = VectorLength(pmin,pmax) / 100;
-  far  = MAX(camera.focallength,VectorLength(pmin,pmax)) * 20;
-  if (options.stereo != NOSTEREO)
-    near = camera.focallength / 5;
-#endif
-  
-  // Window width to height ratio 
-  ratio = options.screenwidth / (double)(options.screenheight);
-#if defined(BUILDING_S2PLOT)
-  ratio *= (_s2_panels[_s2_activepanel].x2 - _s2_panels[_s2_activepanel].x1) / (_s2_panels[_s2_activepanel].y2 - _s2_panels[_s2_activepanel].y1);
-#endif
-  if ((options.stereo == DUALSTEREO) || (options.stereo == WDUALSTEREO)) {
-    ratio /= 2;
-  } else if (options.stereo == TRIOSTEREO) {
-    ratio /= 3;
-  }
-  radians = DTOR * camera.aperture / 2;
-  
-  switch (options.projectiontype) {
-  case PERSPECTIVE:
-    wd2     = near * tan(radians);
-    ndfl    = near / camera.focallength;
-    if (eye == 'l') {
-      left  = - ratio * wd2 + 0.5 * camera.eyesep * ndfl;
-      right =   ratio * wd2 + 0.5 * camera.eyesep * ndfl;
-    } else if (eye == 'r') {
-      left  = - ratio * wd2 - 0.5 * camera.eyesep * ndfl;
-      right =   ratio * wd2 - 0.5 * camera.eyesep * ndfl;
-    } else {
-      left  = - ratio * wd2;
-      right =   ratio * wd2;
-    }
-    top    =   wd2;
-    bottom = - wd2;
-    glFrustum(left,right,bottom,top,near,far);
-    break;
-  case ORTHOGRAPHIC:
-    dist = VectorLength(camera.vp,camera.pr);
-    left   = - dist * ratio * tan(radians);
-    right  =   dist * ratio * tan(radians);
-    bottom = - dist * tan(radians);
-    top    =   dist * tan(radians);
-    glOrtho(left,right,bottom,top,near,far);
-    //fprintf(stderr, "XXX S2PLOT HACKED FOR GLORTHO!!! XXX\n");
-    //glOrtho(0,1,0,1,0,1);
-    break;
-  }
-
-#if defined(BUILDING_S2PLOT)
-    _s2_save_near = near;
-    _s2_save_far = far;
-#endif
-}
-#endif
 
 /*
    Create the geometry
@@ -1243,7 +1269,7 @@ void CreateProjection(int eye) {
       geometry).
    Otherwise draw immediately,
 */
-void MakeGeometry(int doupdate, int doscreen) {
+void MakeGeometry(int doupdate, int doscreen, int eye) {
 
   int i,j;
   XYZ linelist[300*MAXLABELLEN];
@@ -1304,7 +1330,7 @@ void MakeGeometry(int doupdate, int doscreen) {
       
       // s2 change: allow dynamic geometry
       _s2_startDynamicGeometry(FALSE);
-      MakeGeometry(FALSE, doscreen);
+      MakeGeometry(FALSE, doscreen, eye);
       _s2_endDynamicGeometry();
       
       return;
@@ -1312,7 +1338,7 @@ void MakeGeometry(int doupdate, int doscreen) {
 #endif
   } else if (!_s2_dynamicEnabled && doscreen) {
     _s2_startDynamicGeometry(FALSE);
-    MakeGeometry(FALSE, doscreen);
+    MakeGeometry(FALSE, doscreen, eye);
     _s2_endDynamicGeometry();
   }
 
@@ -2151,7 +2177,7 @@ void MakeGeometry(int doupdate, int doscreen) {
     if (!_s2_retain_lists) {
       // s2 change: allow dynamic geometry
       _s2_startDynamicGeometry(FALSE);
-      MakeGeometry(FALSE, doscreen);
+      MakeGeometry(FALSE, doscreen, eye);
       _s2_endDynamicGeometry();
     } else if (doupdate) {
       glEndList();
@@ -2162,19 +2188,27 @@ void MakeGeometry(int doupdate, int doscreen) {
   if (!_s2_dynamicEnabled) {
     _s2_startDynamicGeometry(FALSE);
 
-    if (options.debug) {
-      fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
-    }
-    MakeGeometry(FALSE, doscreen);
+    //if (options.debug) {
+    //  fprintf(stderr, "(recursively) calling MakeGeom(FALSE, %d)\n", doscreen);
+    //}
+    MakeGeometry(FALSE, doscreen, eye);
     
     _s2_endDynamicGeometry();
     return;
   }
 #endif
   
+// CONDITIONAL added DGB 20141101 - probably redundant as 
+// s2priv_drawBillboards probably checks
+if (_s2_dynamicEnabled) {
   /* draw the billboards */
   if (nbboard) {
-    _s2priv_drawBillboards();
+    //fprintf(stderr, "doscreen = %d and nbboard = %d\n", doscreen, nbboard);
+    // draw 3d billboards
+    _s2priv_drawBillboards(doscreen);
+    // draw screen billboards 
+    // What is a screen billboard? NOT YET IMPLEMENTED
+    //_s2priv_drawBillboards(TRUE);
   }
 
   if (nbbset) {
@@ -2183,16 +2217,22 @@ void MakeGeometry(int doupdate, int doscreen) {
   
   /* draw the handles if they are visible */
   if (_s2_handle_vis && nhandle) {
+    // QUERY: maybe just need _s2priv_drawHandles(doscreen) ???
     // draw 3d handles
     _s2priv_drawHandles(FALSE);
     // draw screen handles
     _s2priv_drawHandles(TRUE);
   }
-  
+ }
+
+// CONDITIONAL added DGB 20141101 - definitely needed, oglcb was
+// being called three times per eye/screen.
+if (_s2_dynamicEnabled && !doscreen) {
   /* and call the direct OpenGL callback if one is present */
   if (_s2_oglcb) {
-    _s2_oglcb();
+    _s2_oglcb(&eye);
   }
+ }
   
   /* call the entry/exit fade in routine */
   //_s2_fadeinout();
@@ -2365,6 +2405,10 @@ void HandleKeyboard(unsigned char key, int x, int y) {
   // x, y meaningful
 }
 
+float getFramerate(){
+    return interfacestate.framerate;
+}
+
 /*
    Deal with plain key strokes
 	The x and y are the screen coordinate of the mouse at the time
@@ -2523,7 +2567,7 @@ void _s2_process_key(unsigned char key,int x, int y, int modifiers)
     break;
   case '-':									/* Move backward or increase speed */
   case '_':
-    if (options.interaction == INSPECT) {
+    if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined(BUILDING_S2PLOT)
       FlyCamera(-50.0 * ss2qcs());
 #else
@@ -2541,7 +2585,7 @@ void _s2_process_key(unsigned char key,int x, int y, int modifiers)
     break;
   case '+':									/* Move forward or increase speed */
   case '=':
-    if (options.interaction == INSPECT) {
+    if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined (BUILDING_S2PLOT)
       FlyCamera(50.0 * ss2qcs());
 #else 
@@ -2892,14 +2936,20 @@ void TranslateCamera(double ix,double iy,int source)
 #elif defined(BUILDING_VIEWER)
 	  delta = options.interactspeed * VectorLength(pmin,pmax) / 500.0;
 #endif
-	else
+	  else
 		delta = options.deltamove;
 	if (source == MOUSECONTROL)
 		delta /= 2;
+
+	if (options.interaction == OBJECT) {
+	  // factor of 50. is to match speed mulitplier in calls to FlyCamera
+	  TranslateInCameraFrame(50. * ix, 50. * iy, 0.0);
+	  return;
+	}
 	
 	/* Move the camera horizontally */
 	vp.x += iy * vu.x * delta;
-   vp.y += iy * vu.y * delta;
+	vp.y += iy * vu.y * delta;
 	vp.z += iy * vu.z * delta;
 	if (options.projectiontype == PERSPECTIVE) {
    	pr.x += iy * vu.x * delta;
@@ -2955,15 +3005,19 @@ void HandleMouse(int button,int state,int x,int y) {
 	glGetIntegerv(GL_VIEWPORT,viewport); /* Get the viewport bounds */
 	gluPickMatrix(x,viewport[3]-y,3.0,3.0,viewport);
 	CreateProjection('c');
-	glMatrixMode(GL_MODELVIEW);
 	glDrawBuffer(GL_BACK_LEFT);
-	glLoadIdentity();
-	s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
-		  camera.focus.x,camera.focus.y,camera.focus.z,
-		  camera.vu.x,camera.vu.y,camera.vu.z);
+	//#if !defined(S2MPICH)
+	if (options.interaction != OBJECT) {
+	  glMatrixMode(GL_MODELVIEW);
+	  glLoadIdentity();
+	  s2LookAt(camera.vp.x,camera.vp.y,camera.vp.z,
+		   camera.focus.x,camera.focus.y,camera.focus.z,
+		   camera.vu.x,camera.vu.y,camera.vu.z);
+	}
+	//#endif
 	MakeLighting();
 	MakeMaterial();
-	MakeGeometry(FALSE, FALSE);
+	MakeGeometry(FALSE, FALSE, 'c');
 	DrawExtras();
 	
 	if ((nhits = glRenderMode(GL_RENDER)) < 0) {
@@ -3038,7 +3092,7 @@ void HandleMouse(int button,int state,int x,int y) {
 	{
       
 	/* Move backward or increase speed */
-	if (options.interaction == INSPECT) {
+	if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined(BUILDING_S2PLOT)
 	  FlyCamera(-50.0 * ss2qcs());
 #else
@@ -3082,7 +3136,7 @@ void HandleMouse(int button,int state,int x,int y) {
 	{
       
 	/* Move forward or increase speed */
-	if (options.interaction == INSPECT) {
+	  if (options.interaction == INSPECT || options.interaction == OBJECT) {
 #if defined (BUILDING_S2PLOT)
 	  FlyCamera(50.0 * ss2qcs());
 #else 
@@ -3194,7 +3248,7 @@ void HandleMouseMotion(int x,int y) {
 #if !defined(BUILDING_S2PLOT)
 	RotateCamera(-dx,dy,0.0,MOUSECONTROL);
 #else
-	if (options.interaction == INSPECT) {
+	if (options.interaction == INSPECT || options.interaction == OBJECT) {
 	  RotateCamera(-dx,dy, 0.0,MOUSECONTROL);
 	} else {
 #define ROCLIM 0.8
@@ -3364,9 +3418,20 @@ void HandleIdle(void)
    }
 
 	// Is it time for another update 
-   if (tstart < 0) 
-      tstart = GetRunTime();
-   tstop = GetRunTime();
+   double tm = GetRunTime();  
+
+  // this is dangerous, this function may be called different times
+  // on the MPI network as a result of refresh cycles,system load etc.
+#if 0 && defined(S2MPICH)
+   if (_s2mpi_world_size > 1) {
+     MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+   }
+#endif
+
+   if (tstart < 0) {
+     tstart = tm; /* GetRunTime(); */
+   }
+   tstop = tm; /* GetRunTime(); */
    if (tstop - tstart > 1.0/options.targetfps) {
      s2winPostRedisplay();
       tstart = tstop;
@@ -4456,7 +4521,7 @@ void DeleteGeometry(void)
       ballt = NULL;
    }
 
-   MakeGeometry(TRUE, FALSE);
+   MakeGeometry(TRUE, FALSE, 'c');
 }
 
 
@@ -4986,7 +5051,7 @@ int _s2priv_find_device(char *devstr) {
   int i = 0;
   while ((i < _s2_ndevices) && 
 	 strncasecmp(devstr, _s2_valid_devices[i].devicename,
-		     strlen(devstr))) {
+		     strlen(_s2_valid_devices[i].devicename))) {
     i++;
   }
   if (i < _s2_ndevices) {
@@ -5568,8 +5633,17 @@ void _s2priv_drawBillboards(void) {
 #else 
 
 /* draw the billboards */
-void _s2priv_drawBillboards(void) {
+void _s2priv_drawBillboards(int doscreen) {
   /* billboard texture method, correctly sorted  */
+
+  // honestly, why support screen-based billboards? This is not useful
+  // in general because you could just use textured quads on the 
+  // screen. The only useful option would be if you needed billoards on
+  // "c" screen but not "l" for example. For now, BARF.
+  if (doscreen) {
+    //fprintf(stderr, "Screen-geometry billboards are NOT presently supported.\n");
+    return;
+  }
 
   // 1. calculate distance to camera for each bboard
   static XYZ CAMP, UP, VIEW, RGT;
@@ -5581,12 +5655,13 @@ void _s2priv_drawBillboards(void) {
   SetVectorLength(&RGT, 7.0);
   Normalise(&VIEW);
 
+  int i = 0;
+
 #if defined(POINTER_SORT)
   static _S2BBOARD **bbptr = NULL;
   bbptr = (_S2BBOARD **)realloc(bbptr, nbboard * sizeof(_S2BBOARD *));
 #endif
 
-  int i = 0;
 #if defined(S2OPENMP)
   //int tid, nthreads;
 #pragma omp parallel shared(bboard,CAMP,nbboard) private(i)
@@ -5642,6 +5717,27 @@ void _s2priv_drawBillboards(void) {
   XYZ nUP = UP;
   Normalise(&nUP);
   XYZ tmpb, dilRGT, dilUP;
+
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    double bbmodel[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, bbmodel);
+    RGT.x = bbmodel[0];
+    RGT.y = bbmodel[4];
+    RGT.z = bbmodel[8];
+    UP.x = bbmodel[1];
+    UP.y = bbmodel[5];
+    UP.z = bbmodel[9];
+
+    nRGT = RGT;
+    Normalise(&nRGT);
+    nUP = UP;
+    Normalise(&nUP);
+    VIEW = CrossProduct(nUP, nRGT);
+    Normalise(&VIEW);
+  }
+#endif
+
 
   int j, bi;
 #if defined(S2OPENMP)
@@ -5740,7 +5836,24 @@ void _s2priv_drawBillboards(void) {
   glEnable(GL_TEXTURE_2D);
 
   for (i = 0; i < nbboard; i++) {
-  
+
+    /*
+    if ((doscreen && !strlen(bboard[i].whichscreen)) ||
+	(!doscreen && strlen(bboard[i].whichscreen))) {
+      continue;
+    }
+    if (doscreen && !(strlen(_s2_doingScreen) &&
+		      strstr(bboard[i].whichscreen, _s2_doingScreen))) {
+      continue;
+    }
+    */
+    
+    if (strlen(bboard[i].whichscreen)) {
+      // screen billboards are ignored / meaningless
+      continue;
+    }
+
+
     // SORT RESULTS IN ORDERED LIST: CLOSEST TO FURTHEST
     // SO HERE WE INVERT THE ORDER AS WE WANT TO DRAW FARTHEST FIRST
     // [for indexing into bboard[...] array only!]
@@ -5763,6 +5876,7 @@ void _s2priv_drawBillboards(void) {
     int j = i+1;
     int bj = nbboard-1-j;
     while ((j < nbboard) && 
+	   !(strlen(bboard[i].whichscreen)) && 
 	   // (j-i < 5000)) &&
 	   (bboard[bj].trans == bboard[bi].trans) &&
 	   (bboard[bj].texid == bboard[bi].texid)) {
@@ -5770,7 +5884,7 @@ void _s2priv_drawBillboards(void) {
       bj--;
     }
     j--;
-    //j = i;
+    // j = i;
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, 0, _bb_vertices+(i*3*4));
@@ -5954,6 +6068,165 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
   
   /* default device capabilities */
   _s2_devcap = _S2DEVCAP_CURSOR | _S2DEVCAP_CROSSHAIR | _S2DEVCAP_SELECTION;
+
+#if defined(S2MPICH)
+  MPI_Init(NULL, NULL);
+  MPI_Comm_size(MPI_COMM_WORLD, &_s2mpi_world_size);
+  if ((_s2mpi_world_size > 1) && (istereo != 63)) {
+    fprintf(stderr, "For multihead mode, S2PLOT device *must* be '/S2MULTI/...'\n");
+    exit(-1);
+  }
+  MPI_Comm_rank(MPI_COMM_WORLD, &_s2mpi_world_rank);
+  char processor_name[MPI_MAX_PROCESSOR_NAME];
+  int name_len;
+  MPI_Get_processor_name(processor_name, &name_len);
+  //fprintf(stderr, "Hello world from processor %s, rank %d"
+  //  " out of %d processors\n", processor_name,
+  //  _s2mpi_world_rank, _s2mpi_world_size);
+  
+  _s2mpi_pixels_width = _s2mpi_pixels_height = -1;
+  //float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
+  if (_s2mpi_world_size > 1) {
+    /* for multihead, only useable interaction mode is OBJECT */
+    options.interaction = OBJECT;
+
+    /* allocate space for arrays of physical panel bounds */
+    _s2mpi_canvas_x1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_x2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_y1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_canvas_y2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_x1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_x2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_y1arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_scr_y2arr = (float *)malloc(_s2mpi_world_size * sizeof(float));
+    _s2mpi_paarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pbarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pcarr = (XYZ *)malloc(_s2mpi_world_size * sizeof(XYZ));
+    _s2mpi_pwarr = (int *)malloc(_s2mpi_world_size * sizeof(int));
+    _s2mpi_pharr = (int *)malloc(_s2mpi_world_size * sizeof(int));
+    _s2mpi_ismaster = (int *)malloc(_s2mpi_world_size * sizeof(int));
+
+    /* find config file name */
+    char *cfg = strtok(_s2_devstr, "/"); // cfg = "S2MULTI"
+    if (strcasecmp(cfg, "S2MULTI")) {
+      fprintf(stderr, "Invalid device format.\n");
+      exit(-1);
+    }
+    cfg = strtok(NULL, "/");
+    if (!cfg) {
+      cfg = "s2config.txt";
+    }
+    /* cfg is now the filename for the config file */
+    
+    /* read config file - select "rank"th row - and store p_a, p_b, p_c vectors
+     * defining BLC, TLC, BRC of this screen in world coordinates centred at 
+     * origin of display system e.g. centre of CAVE2
+     */
+    FILE *config = fopen(cfg, "r");
+    char mydevice[32];
+    mydevice[0] = '\0';
+    int ln = 0;
+    if (!config) {
+      fprintf(stderr, "Failed to open required 's2config' file for S2MULTI mode.\n");
+      exit(-1);
+    } else {
+      int line_read = 0;
+      char *configline = NULL;
+      size_t configlinecap= 0;
+      // BIG ASSUMPTION: CONFIG FILE is in NODE ORDER as per MPI LAUNCH
+      // i.e. first column of CONFIG file is in order, and corresponds to
+      // MPI world ranks
+      getline(&configline, &configlinecap, config);
+      char type;
+      char idev[32];
+      while (!feof(config) && (line_read < _s2mpi_world_size)) {
+	sscanf(configline, 
+	       "%d %c %s %d %d %f %f %f %f %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
+	       &ln, &type,
+	       idev, &_s2mpi_pixels_width, &_s2mpi_pixels_height,
+	       &_s2mpi_canvas_x1, &_s2mpi_canvas_y1, 
+	       &_s2mpi_canvas_x2, &_s2mpi_canvas_y2,
+	       &_s2mpi_pa.x, &_s2mpi_pa.y, &_s2mpi_pa.z,
+	       &_s2mpi_pb.x, &_s2mpi_pb.y, &_s2mpi_pb.z,
+	       &_s2mpi_pc.x, &_s2mpi_pc.y, &_s2mpi_pc.z);
+	//fprintf(stderr, "read ln = %d, lineread = %d\n", ln, line_read);
+	if (ln != line_read) {
+	  fprintf(stderr, "config file is incorrect at line %d. Please fix.\n", 
+		  line_read);
+	  exit(-1);
+	}
+	
+	if (ln == _s2mpi_world_rank) {
+	  strcpy(mydevice, idev);
+	}
+
+	_s2mpi_ismaster[ln] = (type == 'm') ? 1 : 0;
+
+	_s2mpi_pwarr[ln] = _s2mpi_pixels_width;
+	_s2mpi_pharr[ln] = _s2mpi_pixels_height;
+
+	_s2mpi_canvas_x1arr[ln] = _s2mpi_canvas_x1;
+	_s2mpi_canvas_x2arr[ln] = _s2mpi_canvas_x2;
+	_s2mpi_canvas_y1arr[ln] = _s2mpi_canvas_y1;
+	_s2mpi_canvas_y2arr[ln] = _s2mpi_canvas_y2;
+
+
+	// store extent of global canvas relative to this display screen
+	_s2mpi_scr_x1arr[ln] = -_s2mpi_canvas_x1 / 
+	  (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+	_s2mpi_scr_x2arr[ln] = _s2mpi_scr_x1arr[ln] + 
+	  1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+	_s2mpi_scr_y1arr[ln] = -_s2mpi_canvas_y1 / 
+	  (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+	_s2mpi_scr_y2arr[ln] = _s2mpi_scr_y1arr[ln] 
+	  + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+
+	// store vectors to blc, brc, tlc of this display screen
+	_s2mpi_paarr[ln] = _s2mpi_pa;
+	_s2mpi_pbarr[ln] = _s2mpi_pb;
+	_s2mpi_pcarr[ln] = _s2mpi_pc;
+
+	line_read++;
+	getline(&configline, &configlinecap, config);
+      }
+      //fprintf(stderr, "read line: %s\n", configline);
+    }
+    if (ln != _s2mpi_world_size-1) {
+      fprintf(stderr, "config file is not ordered properly!\n");
+      exit(-1);
+    }
+    fclose(config);
+    
+    // install globals for this mpi node
+    _s2mpi_canvas_x1 = _s2mpi_canvas_x1arr[_s2mpi_world_rank];
+    _s2mpi_canvas_x2 = _s2mpi_canvas_x2arr[_s2mpi_world_rank];
+    _s2mpi_canvas_y1 = _s2mpi_canvas_y1arr[_s2mpi_world_rank];
+    _s2mpi_canvas_y2 = _s2mpi_canvas_y2arr[_s2mpi_world_rank];
+
+
+    _s2mpi_pa = _s2mpi_paarr[_s2mpi_world_rank];
+    _s2mpi_pb = _s2mpi_pbarr[_s2mpi_world_rank];
+    _s2mpi_pc = _s2mpi_pcarr[_s2mpi_world_rank];
+
+    _s2_scr_x1 = _s2mpi_scr_x1arr[_s2mpi_world_rank];
+    _s2_scr_x2 = _s2mpi_scr_x2arr[_s2mpi_world_rank];
+    _s2_scr_y1 = _s2mpi_scr_y1arr[_s2mpi_world_rank];
+    _s2_scr_y2 = _s2mpi_scr_y2arr[_s2mpi_world_rank];
+
+    /*  now map mydevice to istereo and ifullscreen to use! */
+    int mydeviceid = _s2priv_find_device(mydevice);
+    if (mydeviceid < 0) {
+      fprintf(stderr, "s2opend: device \"%s\" from config file is unknown.\n", mydevice);
+      exit(-1);
+    } else {
+      fprintf(stderr, "s2opend: loading device %d for named device %s\n",
+	      mydeviceid, mydevice);
+    }
+    
+    ifullscreen = _s2_valid_devices[mydeviceid].fullscreen;
+    istereo = _s2_valid_devices[mydeviceid].stereo;
+  }
+#endif
 
   // name of our device driver - default none
   char *_s2_driver = NULL;
@@ -6222,6 +6495,18 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    /* camera speed */
    _s2_cameraspeed = 1.0;
 
+   /* object mode control */
+   _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
+   if (options.interaction == OBJECT) {
+     _s2_object_trans.z = -3.0;
+   }
+   int xi;
+   for (xi = 0; xi < 16; xi++) {
+     _s2_object_rot[xi] = 0.;
+   }
+   _s2_object_rot[0] = _s2_object_rot[5] = _s2_object_rot[10] = 1.0;
+   _s2_object_rot[15] = 1.0;
+
    /* eye sep */
      _s2_eyesepmul = 1.0;
 
@@ -6239,6 +6524,8 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
    /* remote handler */
    _s2_remcb = NULL;
+   _s2_remcb_sock = NULL;
+   _s2_remcb_sock_write = NULL;
    _s2_skiplock = 0;
    _s2_remoteport = 0;
    
@@ -6330,27 +6617,50 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    _s2prompt_y = 0.40;
 
 #if defined(BUILDING_S2PLOT)
-   /* get screen constraints from environment or default */
+
+#if defined(S2MPICH) // CANVASCANVAS
+   if (_s2mpi_world_size > 1) {
+     // done earlier in code and pulled here above.
+     //_s2_scr_x1 = -_s2mpi_canvas_x1 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     //_s2_scr_x2 = _s2_scr_x1 + 1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+     //_s2_scr_y1 = -_s2mpi_canvas_y1 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+     //_s2_scr_y2 = _s2_scr_y1 + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+
+     // store for later use // Again ASSUMPTION that config file is in 
+     // order i.e. ln == _s2mpi_world_rank
+     //_s2mpi_scr_x1arr[_s2mpi_world_rank] = _s2_scr_x1;
+     //_s2mpi_scr_x2arr[_s2mpi_world_rank] = _s2_scr_x2;
+     //_s2mpi_scr_y1arr[_s2mpi_world_rank] = _s2_scr_y1;
+     //_s2mpi_scr_y2arr[_s2mpi_world_rank] = _s2_scr_y2;
+   } else {
+#endif
+
+     /* get screen constraints from environment or default */
+     _s2_scr_x1 = 0.;
+     _s2_scr_x2 = 1.;
+     _s2_scr_y1 = 0.;
+     _s2_scr_y2 = 1.;
+     
+#if defined(S2MPICH)
+   }
+#endif
+
    char *panelstr;
-   _s2_scr_x1 = 0.;
    panelstr = getenv("S2PLOT_X1");
    if (panelstr) {
      _s2_scr_x1 = atof(panelstr);
    }
 
-   _s2_scr_x2 = 1.;
    panelstr = getenv("S2PLOT_X2");
    if (panelstr) {
      _s2_scr_x2 = atof(panelstr);
    }
 
-   _s2_scr_y1 = 0.;
    panelstr = getenv("S2PLOT_Y1");
    if (panelstr) {
      _s2_scr_y1 = atof(panelstr);
    }
 
-   _s2_scr_y2 = 1.;
    panelstr = getenv("S2PLOT_Y2");
    if (panelstr) {
      _s2_scr_y2 = atof(panelstr);
@@ -6427,11 +6737,19 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
        _s2_remoteport = 0;
      }
    }
+   // only start remote thread socket on master node of MPI runs
+#if defined(S2MPICH)
+   if (_s2mpi_world_rank == 0) {
+     //_s2_remoteport += (_s2mpi_world_rank) * S2MPIMAXNODES;
+#endif
    if (_s2_remoteport) {
      pthread_t p_thread;
      int a = 1;
      pthread_create(&p_thread, NULL, remote_thread_sub, (void *)&a);
    }
+#if defined(S2MPICH)
+   }
+#endif
 
    /* everything seems to be ok */
    return 1;
@@ -6491,6 +6809,14 @@ void *remote_thread_sub(void *data) {
 	if (_s2_remcb) {
 	  consumed = _s2_remcb(rgot);
 	}
+
+	if (_s2_remcb_sock) {
+      consumed = _s2_remcb_sock(rgot, sockout);
+    }
+
+    if (_s2_remcb_sock_write){
+      consumed = _s2_remcb_sock_write(rgot, cfd);
+    }
 
 	if (!consumed) {
 
@@ -6626,11 +6952,16 @@ int s2opend(char *idevice, int iargc, char **iargv) {
   int deviceid = _s2priv_find_device(devstr);
   if (deviceid < 0) {
     fprintf(stderr, "s2opend: device \"%s\" is unknown.\n", devstr);
-    return 0;
+    exit(-1);
   }
   
+  /* save the device string in case a device needs further info... */
+  strcpy(_s2_devstr, devstr);
+
+  /* call the standard s2open function */
   int nretval = s2open(_s2_valid_devices[deviceid].fullscreen,
 		       _s2_valid_devices[deviceid].stereo, iargc, iargv);
+
   return nretval;
 
 }
@@ -6695,7 +7026,7 @@ void s2show(int iinteractive) {
     }
     */
 
-    MakeGeometry(TRUE, FALSE);
+    MakeGeometry(TRUE, FALSE, 'c');
 #if defined(BUILDING_S2PLOT)
   }
     xs2cp(waspanel);
@@ -7150,7 +7481,7 @@ void *cs2qncb(void) {
 #if (0) // moved to s2plot.c
 /* register the function that draws direct OpenGL graphics when called */
 void cs2socb(void *icbfn) {
-  _s2_oglcb = (void (*)())icbfn;
+  _s2_oglcb = (void (*)(int *))icbfn;
 }
 void *cs2qocb(void) {
   return (void *)_s2_oglcb;
@@ -7164,7 +7495,13 @@ void cs2srcb(void *rcbfn) {
 void *cs2qrcb(void) {
   return (void *)_s2_remcb;
 }
+void cs2srcb_sock(void *rcbfn) {
+  _s2_remcb_sock = (int (*)(char *, FILE *))rcbfn;
+}
 
+void cs2srcb_sock_write(void *rcbfn) {
+  _s2_remcb_sock_write = (int (*)(char *, int))rcbfn;
+}
 
 /* set the handle callback function */
 void cs2shcb(void *icbfn) {
@@ -8245,16 +8582,26 @@ void _s2_fadeinout(void) {
     return;
   }
 
+  double tm = GetRunTime();  
+
+  // this is dangerous, this function may be called different times
+  // on the MPI network as a result of refresh cycles,system load etc.
+#if 0 && defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast((void *)&tm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
+#endif
+
   // commence fade-in
   else if (_s2_fadestatus == 0) {
-    starttime = GetRunTime();
+    starttime = tm; /* GetRunTime(); */
     trans = 1.;
     _s2_fadestatus = 1;
   }
 
   // fading in...
   else if (_s2_fadestatus == 1) {
-    double del = GetRunTime() - starttime;
+    double del = tm /*GetRunTime()*/ - starttime;
     if (del > _s2_fadetime) {
       _s2_fadestatus = 2;
       trans = 0.;
@@ -8265,7 +8612,7 @@ void _s2_fadeinout(void) {
 
   // commence fade-out
   else if (_s2_fadestatus == 3) {
-    starttime = GetRunTime();
+    starttime = tm; /* GetRunTime(); */
     trans = 0.;
     _s2_fadestatus = 4;
     return;
@@ -8273,7 +8620,7 @@ void _s2_fadeinout(void) {
 
   // fading out...
   else if (_s2_fadestatus == 4) {
-    double del = GetRunTime() - starttime;
+    double del = tm /*GetRunTime()*/ - starttime;
     if (del > _s2_fadetime) {
       _s2_fadestatus = 5;
       trans = 1.;
@@ -8623,7 +8970,7 @@ void s2show_thr(int iinteractive) {
     if (_s2_cameraset) {
       _s2priv_CameraSet();
     }
-    MakeGeometry(TRUE, FALSE);
+    MakeGeometry(TRUE, FALSE, 'c');
 #if defined(BUILDING_S2PLOT)
   }
   xs2cp(waspanel);
@@ -8824,6 +9171,87 @@ void drawView(char *projinfo, double camsca) {
     camoff = VectorMul(vright, camsca);
 #endif
 
+#if defined(S2MPICH) 
+    XYZ s2panel_centre = {0., 0., 0.};
+    XYZ canvas_centre = {0., 0., 0.};
+    if (_s2mpi_world_size > 1) {
+      // compute vector to centre of this s2plot panel, on 
+      // global display screen
+      // pcx, pcy = this panel centre in fractional coords along 
+      // global canvas viewport
+      // p0x, p0y = centre of global canvas
+      float pcx = 0.5 * (_s2_panels[spid].x1 + _s2_panels[spid].x2);
+      float pcy = 0.5 * (_s2_panels[spid].y1 + _s2_panels[spid].y2);
+      // this panel coordinate is in the local slaves display space
+      // where (0,0) is blc and (1,1) is trc. This panel coordinate 
+      // may be well outside this range. Let's convert the panel
+      // coordinate back into a coordinate in the range (0,1) on the
+      // global (multi-display) canvas. *then* look for the display 
+      // head it is on...
+      float ccx = _s2mpi_canvas_x1 + pcx * (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
+      float ccy = _s2mpi_canvas_y1 + pcy * (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+      //fprintf(stderr, "Panel pcx, pcy = %f, %fl ccx, ccy = %f, %f\n", 
+      //      pcx, pcy, ccx, ccy);
+
+      float p0x = 0.5, p0y = 0.5;
+      int ii;
+      int foundpc = 0, foundp0 = 0;
+      for (ii = 0; (ii < _s2mpi_world_size) && !(foundpc && foundp0); ii++) {
+	if ((_s2mpi_canvas_x1arr[ii] <= ccx) &&
+	    (ccx <= _s2mpi_canvas_x2arr[ii]) &&
+	    (_s2mpi_canvas_y1arr[ii] <= ccy) &&
+	    (ccy <= _s2mpi_canvas_y2arr[ii]) && //
+	    !_s2mpi_ismaster[ii]) {
+	  foundpc = 1;
+	  // fraction of THIS display screen to centre of panel
+	  float fracx = (ccx - _s2mpi_canvas_x1arr[ii]) / 
+	    (_s2mpi_canvas_x2arr[ii] - _s2mpi_canvas_x1arr[ii]);
+	  float fracy = (ccy - _s2mpi_canvas_y1arr[ii]) / 
+	    (_s2mpi_canvas_y2arr[ii] - _s2mpi_canvas_y1arr[ii]);
+	  // compute vector to centre ON THE PANEL it falls in
+	  s2panel_centre = VectorAdd(_s2mpi_paarr[ii], 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pbarr[ii]), fracx));;
+	  s2panel_centre = VectorAdd(s2panel_centre, 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pcarr[ii]), fracy));
+	  
+
+	  
+	} 
+	if ((_s2mpi_canvas_x1arr[ii] <= p0x) &&
+	    (p0x <= _s2mpi_canvas_x2arr[ii]) &&
+	    (_s2mpi_canvas_y1arr[ii] <= p0y) &&
+	    (p0y <= _s2mpi_canvas_y2arr[ii]) && //) {
+	    !_s2mpi_ismaster[ii]) {
+	  foundp0 = 1;
+	  // fraction of THIS display screen to centre of whole canvas
+	  float fracx = (p0x - _s2mpi_canvas_x1arr[ii]) / 
+	    (_s2mpi_canvas_x2arr[ii] - _s2mpi_canvas_x1arr[ii]);
+	  float fracy = (p0y - _s2mpi_canvas_y1arr[ii]) / 
+	    (_s2mpi_canvas_y2arr[ii] - _s2mpi_canvas_y1arr[ii]);
+	  // compute vector to centre ON THE PANEL it falls in
+	  canvas_centre = VectorAdd(_s2mpi_paarr[ii], 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pbarr[ii]), fracx));;
+	  canvas_centre = VectorAdd(canvas_centre, 
+				     VectorMul(VectorSub(_s2mpi_paarr[ii], _s2mpi_pcarr[ii]), fracy));
+	  
+	}
+      }
+	  
+      if (!foundpc) {
+	fprintf(stderr, "did not find panel centre\n");
+      } else if (!foundp0) {
+	fprintf(stderr, "   did not find canvas centre\n");
+      } else {
+	if (_s2mpi_world_rank == 0) {
+	  //fprintf(stderr, "canvas_centre = %f,%f,%f; panel_centre = %f,%f,%f\n", 
+	  //	  canvas_centre.x, canvas_centre.y, canvas_centre.z,
+	  //	  s2panel_centre.x, s2panel_centre.y, s2panel_centre.z);
+	}
+      }
+      
+    }
+#endif
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     CreateProjection(projinfo[0]);
@@ -8843,15 +9271,20 @@ void drawView(char *projinfo, double camsca) {
     }
 #endif
     
-    glLoadIdentity();
-    s2LookAt(camera.vp.x + camoff.x,
-	      camera.vp.y + camoff.y,
-	      camera.vp.z + camoff.z,
-	      camera.vp.x + camoff.x + camera.vd.x,
-	      camera.vp.y + camoff.y + camera.vd.y,
-	      camera.vp.z + camoff.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
-    
+    //#if !defined(S2MPICH)
+    if (options.interaction != OBJECT) {
+      glLoadIdentity();
+      //fprintf(stderr, "s2LookAt\n");
+      s2LookAt(camera.vp.x + camoff.x,
+	       camera.vp.y + camoff.y,
+	       camera.vp.z + camoff.z,
+	       camera.vp.x + camoff.x + camera.vd.x,
+	       camera.vp.y + camoff.y + camera.vd.y,
+	       camera.vp.z + camoff.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
+    //#endif    
+
 #if defined(BUILDING_S2PLOT)
     /* get projections needed for coordinate trans */
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
@@ -8862,21 +9295,70 @@ void drawView(char *projinfo, double camsca) {
     MakeLighting();
     MakeMaterial();
     
+    if (options.interaction == OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glPushMatrix();
+      glLoadIdentity();
 
-    MakeGeometry(FALSE, FALSE);
-    
+      // hack to allow for panels not centred in front of initial camera
+#if defined(S2MPICH) 
+      // 1. compute TRANSLATION in Y (CYLINDRICAL ASSUMPTION)
+      float dy = s2panel_centre.y - canvas_centre.y;
+      glTranslatef(0., dy, 0.);
+      
+      // 1. compute ROTATION around centre of world Y (CYLINDRICAL ASSUMPTION)
+      s2panel_centre.y = canvas_centre.y = 0.0;
+      Normalise(&s2panel_centre);
+      Normalise(&canvas_centre);
+      float costh = DotProduct(s2panel_centre, canvas_centre);
+      float rrad = acos(costh);
+      double rx[16];
+      XYZ up = {0., 1., 0.};
+      //fprintf(stderr, "rotation is %f degrees\n", rrad * 180.0 / M_PI);
+      
+      // sign of rotation
+      XYZ tmp = CrossProduct(canvas_centre, s2panel_centre);
+      XYZ tup = {0., 1., 0.};
+      if (DotProduct(tmp, tup) < 0.0) {
+	rrad = -rrad;
+      }
+      
+
+      computeRotationMatrix4x4(rx, up, rrad);
+      glMultMatrixd(rx);
+#endif
+
+      // translate modelview matrix with _s2_object_trans
+      glTranslatef(_s2_object_trans.x, _s2_object_trans.y, _s2_object_trans.z);
+
+      // multiply modelview matrix with _s2_object_rot
+      glMultMatrixd(_s2_object_rot);
+
+    }
+
+    MakeGeometry(FALSE, FALSE, projinfo[0]);
+
+    //#if defined(S2MPICH)
+    if (options.interaction == OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glPopMatrix();
+    }
+    //#endif
+
 #if defined(BUILDING_S2PLOT)
     /* draw the dynamic geometry */
 
+#if (1)
     // draw the screen geometry
     strcpy(_s2_doingScreen, projinfo);
     glDisable(GL_LIGHTING);
     int tmp = options.rendermode;
     options.rendermode = SHADE_FLAT;
-    MakeGeometry(FALSE, TRUE);
+    MakeGeometry(FALSE, TRUE, projinfo[0]);
     glEnable(GL_LIGHTING);
     options.rendermode = tmp;
     strcpy(_s2_doingScreen, "");
+#endif
 
     // draw the panel surround
     if (_s2_npanels > 1) { 	
@@ -8894,19 +9376,20 @@ void drawView(char *projinfo, double camsca) {
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    s2LookAt(camera.vp.x,
-	      camera.vp.y,
-	      camera.vp.z,
-	      camera.vp.x + camera.vd.x,
-	      camera.vp.y + camera.vd.y,
-	      camera.vp.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
+    if (options.interaction != OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      s2LookAt(camera.vp.x,
+	       camera.vp.y,
+	       camera.vp.z,
+	       camera.vp.x + camera.vd.x,
+	       camera.vp.y + camera.vd.y,
+	       camera.vp.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
     glGetDoublev(GL_MODELVIEW_MATRIX, _s2_dragmodel);
     glGetDoublev(GL_PROJECTION_MATRIX, _s2_dragproj);
     glGetIntegerv(GL_VIEWPORT, _s2_dragview);
-    // done
 
   }
   xs2cp(waspanel);
@@ -8960,17 +9443,20 @@ void handleView(int msx, int msy) {
     gluPickMatrix(msx, options.screenheight-msy, 3.0, 3.0, viewport);
 
     CreateProjection('c');
-    glMatrixMode(GL_MODELVIEW);
     glDrawBuffer(GL_BACK_LEFT);
-    glLoadIdentity();
-    s2LookAt(camera.vp.x,
-	      camera.vp.y,
-	      camera.vp.z,
-	      camera.vp.x + camera.vd.x,
-	      camera.vp.y + camera.vd.y,
-	      camera.vp.z + camera.vd.z,
-	      camera.vu.x,camera.vu.y,camera.vu.z);
-    
+    //#if !defined(S2MPICH)
+    if (options.interaction != OBJECT) {
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      s2LookAt(camera.vp.x,
+	       camera.vp.y,
+	       camera.vp.z,
+	       camera.vp.x + camera.vd.x,
+	       camera.vp.y + camera.vd.y,
+	       camera.vp.z + camera.vd.z,
+	       camera.vu.x,camera.vu.y,camera.vu.z);
+    }
+    //#endif
     glInitNames();
 
     // prepare for selection rather than drawing
@@ -10627,7 +11113,6 @@ unsigned int _s2priv_setupTexture(int width, int height,
 /* 3d version */
 unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
 				    BITMAP4 *bitmap, int usemipmaps) {
-
 #if defined(BUILDING_S2PLOT)
   if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
     // desaturate the bitmap data
@@ -10809,4 +11294,12 @@ XYZ _s2priv_pmin(void) {
 }
 XYZ _s2priv_pmax(void) {
   return pmax;
+}
+
+void s2mhsync(void *ptr, size_t size) {
+#if defined(S2MPICH)
+  if (_s2mpi_world_size > 1) {
+    MPI_Bcast(ptr, size, MPI_BYTE, 0, MPI_COMM_WORLD);
+  }
+#endif
 }

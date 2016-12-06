@@ -91,7 +91,7 @@ echo "Compiling PRC module ..."
 $S2MODCMPLR -I./newprc -I${S2HARUDIR}/include s2prc.cc
 
 echo "Linking PRC module ..."
-$S2MODMAKER -o ${S2PLOT_PRCDRIVER}.so s2prc.o ./newprc/*.o -L${S2HARUDIR}/lib${S2LBITS} -lhpdf -lz
+$S2MODMAKER -o ${S2PLOT_PRCDRIVER}.so s2prc.o ./newprc/*.o -L${S2HARUDIR}/lib -lhpdf -lz
 
 echo "Copying module to $S2PATH/$S2ARCH ..."
 /bin/mv -f ${S2PLOT_PRCDRIVER}.so ${S2PATH}/${S2KERNEL}

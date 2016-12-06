@@ -243,6 +243,10 @@ extern float _s2_cameraspeed; /* speed / increment size for camera movements */
 /* camera eye sep scale: default 1.0 */
 extern float _s2_eyesepmul;
 
+/* object mode (options.interaction==MODEL) control */
+extern XYZ _s2_object_trans;
+extern double _s2_object_rot[16];
+
 /* is buffer swapping allowed? - turn off for Cocoa use */
 extern int _s2_bufswap;
 
@@ -253,10 +257,16 @@ extern int _s2_retain_lists;
 extern void (*_s2_numcb)(int *);
 
 /* pointer to opengl callback function */
-extern void (*_s2_oglcb)();
+extern void (*_s2_oglcb)(int *);
 
 /* pointer to remote control callback function */
 extern int (*_s2_remcb)(char *);
+
+/* pointer to remote control callback function which also sends information back to client*/
+extern int (*_s2_remcb_sock)(char *, FILE *);
+
+/* pointer to remote control callback function which also sends information back to client via write method*/
+extern int (*_s2_remcb_sock_write)(char *, int);
 
 /* this can be set to 1 in very special circumstances to avoid
  * waiting for a mutex lock in threads */
@@ -365,6 +375,23 @@ extern int _s2x_ywinpos;
 /* cache of textures (generally used in callbacks) */
 extern int _s2_ctext_count;
 extern _S2CACHEDTEXTURE *_s2_ctext;
+
+/* global store for MPI state and world display position */
+#if defined(S2MPICH)
+extern int _s2mpi_world_size, _s2mpi_world_rank;
+extern XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+extern int _s2mpi_pixels_width, _s2mpi_pixels_height;
+extern float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
+extern float *_s2mpi_canvas_x1arr, *_s2mpi_canvas_x2arr, *_s2mpi_canvas_y1arr, *_s2mpi_canvas_y2arr;
+extern float *_s2mpi_scr_x1arr, *_s2mpi_scr_x2arr, *_s2mpi_scr_y1arr, *_s2mpi_scr_y2arr;
+extern XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
+extern int *_s2mpi_pwarr, *_s2mpi_pharr; 
+extern int *_s2mpi_ismaster;
+#endif
+
+/* store for the device string in case a device needs further info */
+extern char _s2_devstr[128];
+  
 
 
 #endif // S2GLOBALS_H

@@ -31,23 +31,40 @@
  # $Id: linux-gnu-x86_64.in 5793 2012-10-09 02:06:45Z dbarnes $
  #
 
-#set COMPPATH="/usr/local/gcc/4.4.5/bin"
+# MASSIVE
+# set COMPPATH="/usr/local/gcc/4.9.1/bin"
+# CAVE2
 set COMPPATH="/usr/bin"
+
 set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src -m64"
 
 set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall"
-# echo " * * * DEBUG BUILD * * *"
-# set COMMFLAGS="${BASEFLAGS} -ggdb -Wall"
+#echo " * * * DEBUG BUILD * * *"
+#set COMMFLAGS="${BASEFLAGS} -ggdb -Wall"
+
+set GCC=gcc
+set GPP=g++
+set GFC=gfortran
+
+if ($S2MPI == yes) then
+  set COMPPATH=/usr/lib64/mpi/gcc/openmpi/bin
+  set COMMFLAGS="${COMMFLAGS} -DS2MPICH"
+  set GCC=mpicc
+  set GPP=mpicxx
+  set GFC=mpifort
+endif 
 
 set S2OSTYPE="linux"
-set S2COMPILER="${COMPPATH}/gcc -c ${COMMFLAGS}"
-set S2CCMPILER="${COMPPATH}/g++ -c ${COMMFLAGS}"
-set S2FOMPILER="${COMPPATH}/gfortran -c ${COMMFLAGS}"
-set S2CLINKER="${COMPPATH}/gcc ${COMMFLAGS}"
-set S2CCINKER="${COMPPATH}/g++ ${COMMFLAGS}" 
-set S2FLINKER="${COMPPATH}/gfortran ${COMMFLAGS}"
+set FOMPPATH=${COMPPATH}
+set S2COMPILER="${COMPPATH}/${GCC} -c ${COMMFLAGS}"
+set S2CCMPILER="${COMPPATH}/${GPP} -c ${COMMFLAGS}"
+set S2FOMPILER="${FOMPPATH}/${GFC} -c ${COMMFLAGS}"
+set S2CLINKER="${COMPPATH}/${GCC} ${COMMFLAGS}"
+set S2CCINKER="${COMPPATH}/${GPP} ${COMMFLAGS}"
+set S2FLINKER="${FOMPPATH}/${GFC} ${COMMFLAGS}"
 set S2FTDIR="/usr"
-set S2HARUDIR="/usr/local/libharu/2.2.1"
+set S2HARUDIR="/usr/local/libharu/2.3.0"
+
 
 set S2LBITS="64"
 #set fext="f90"
@@ -55,37 +72,37 @@ set S2LBITS="64"
 set S2COMPILER="${S2COMPILER} -DS2LINUX -DS2USEARRAYS"
 set S2COMPILER="${S2COMPILER} -DS2_3D_TEXTURES"
 
-set S2MODCMPLR="${COMPPATH}/gcc -c -I${S2PATH}/src -DBUILDING_S2PLOT -DS2LINUX ${COMMFLAGS} -fPIC"
+set S2MODCMPLR="${COMPPATH}/${GCC} -c -I${S2PATH}/src -DBUILDING_S2PLOT -DS2LINUX ${COMMFLAGS} -fPIC"
 set S2MODMAKER="${S2CLINKER} -shared"
 
 if ($S2SHARED == yes) then
 
   set S2ARBLIBEXT="so"
-  set S2ARBLIBCTR='${COMPPATH}/gcc -shared -Wl,-soname,${S2ARBLIBNAME} -o ${S2ARBLIBNAME}'
+  set S2ARBLIBCTR='${COMPPATH}/${GCC} -shared -Wl,-soname,${S2ARBLIBNAME} -o ${S2ARBLIBNAME}'
 
     set S2LIBCOMPILER="${S2COMPILER} -fPIC"
     set S2LIBNAME="libs2plot.so"
-    set S2LIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2LIBNAME} -o ${S2LIBNAME}"
+    set S2LIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2LIBNAME} -o ${S2LIBNAME}"
 
     set S2GLUTWINNAME="libs2winglut.so"
-    set S2GLUTWINLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2GLUTWINNAME} -o ${S2GLUTWINNAME}"
+    set S2GLUTWINLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2GLUTWINNAME} -o ${S2GLUTWINNAME}"
 
     set S2MESHSTUBNAME="libs2meshstub.so"
-    set S2MESHSTUBLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2MESHSTUBNAME} -o ${S2MESHSTUBNAME}"
+    set S2MESHSTUBLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2MESHSTUBNAME} -o ${S2MESHSTUBNAME}"
 
     set S2FREEMESHNAME="libs2freemesh.so"
-    set S2FREEMESHLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2FREEMESHNAME} -o ${S2FREEMESHNAME}"
+    set S2FREEMESHLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2FREEMESHNAME} -o ${S2FREEMESHNAME}"
 
     set S2LOCKEDMESHNAME="libs2lockedmesh.so"
-    set S2LOCKEDMESHLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2LOCKEDMESHNAME} -o ${S2LOCKEDMESHNAME}"
+    set S2LOCKEDMESHLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2LOCKEDMESHNAME} -o ${S2LOCKEDMESHNAME}"
 
     set S2DISPSTUBNAME="libs2dispstub.so"
-    set S2DISPSTUBLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2DISPSTUBNAME} -o ${S2DISPSTUBNAME}"
+    set S2DISPSTUBLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2DISPSTUBNAME} -o ${S2DISPSTUBNAME}"
     set S2DISPFGNAME="libs2dispfg.so"
-    set S2DISPFGLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2DISPFGNAME} -o ${S2DISPFGNAME}"
+    set S2DISPFGLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2DISPFGNAME} -o ${S2DISPFGNAME}"
 
     set S2FTNAME="libs2freetype.so"
-    set S2FTLIBCTR="${COMPPATH}/gcc -shared -Wl,-soname,${S2FTNAME} -o ${S2FTNAME}"
+    set S2FTLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2FTNAME} -o ${S2FTNAME}"
 
     set S2LIBINDEX=":"
 

@@ -97,6 +97,16 @@ extern "C" {
 
   void _s2priv_list_devices();
 
+  // translate scene in camera frame
+  void TranslateInCameraFrame(double,double,double);
+  // compute Rotation Matrix
+  void computeRotationMatrix4x4(double mx[16], XYZ axis, double radians);
+  // pre/postmultiply (rotation) matrix
+  void premultiplyMatrix4x4(double mx[16], double my[16]);
+  void postmultiplyMatrix4x4(double mx[16], double my[16]);
+  // apply 4x4 transformation matrix to XYZ (3-vector, no translation)
+  XYZ apply4x4transformMatrix(double mx[16], XYZ a);
+
   void CameraHome(int mode);
   void RotateCamera(double,double,double,int); 
   void FlyCamera(double);
@@ -109,7 +119,7 @@ extern "C" {
   
   /* create a red-X bitmap for texture use */
   BITMAP4 *_s2priv_redXtexture(int w, int h);
-  BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d);
+  BITMAP4 *_s2priv_blankTexture3d(int w, int h, int d);
   
   /* setup a texture from a bitmap of given width and height */
   unsigned int _s2priv_setupTexture(int width, int height, BITMAP4 *bitmap,
@@ -140,7 +150,7 @@ extern "C" {
   void _s2priv_drawHandles(int doscreen);
   
   /* draw the billboards */
-  void _s2priv_drawBillboards(void);
+  void _s2priv_drawBillboards(int doscreen);
   
   /* draw billboard sets */
   void _s2priv_drawBBsets(void);

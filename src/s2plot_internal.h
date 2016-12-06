@@ -146,6 +146,9 @@ extern "C" {
      {"/S2INTERF", 1, 31, 1, "Interleaved stereoscopic, full-screen display"},
      {"/S2WPASSV", 0, 32, 0, "Warped passive stereoscopic, windowed display"},
      {"/S2WPASSVF",1, 32, 0, "Warped passive stereoscopic, full-screen display"},
+#if defined(S2MPICH)
+     {"/S2MULTI",  0, 63, 0, "Multihead"},
+#endif
      {"/S2NULL",   0, -1, 1, "Null device (no display)"}};
   int _s2_ndevices = 24;
   
@@ -195,7 +198,11 @@ extern "C" {
   
   /* camera eye sep scale: default 1.0 */
   float _s2_eyesepmul;
-  
+
+  /* object model (options.interaction==OBJECT) control */
+  XYZ _s2_object_trans;
+  double _s2_object_rot[16];
+
   /* is buffer swapping allowed? - turn off for Cocoa use */
   int _s2_bufswap;
 
@@ -208,10 +215,16 @@ extern "C" {
   void (*_s2_numcb)(int *);
   
   /* pointer to opengl callback function */
-  void (*_s2_oglcb)();
+  void (*_s2_oglcb)(int *);
   
   /* pointer to remote control callback function */
   int (*_s2_remcb)(char *);
+
+  /* pointer to remote control callback function which also sends information back to client*/
+  int (*_s2_remcb_sock)(char *, FILE *);
+
+  /* pointer to remote control callback function which also sends information back to client via write method*/
+  int (*_s2_remcb_sock_write)(char *, int);
 
   /* this can be set to 1 in very special circumstances to avoid
    * waiting for a mutex lock in threads */
@@ -325,6 +338,22 @@ extern "C" {
   /* cache of textures (generally used in callbacks) */
   int _s2_ctext_count;
   _S2CACHEDTEXTURE *_s2_ctext;
+
+  /* global store for MPI state and world display position */
+#if defined(S2MPICH)
+  int _s2mpi_world_size, _s2mpi_world_rank;
+  XYZ _s2mpi_pa, _s2mpi_pb, _s2mpi_pc;
+  int _s2mpi_pixels_width, _s2mpi_pixels_height;
+  float _s2mpi_canvas_x1, _s2mpi_canvas_x2, _s2mpi_canvas_y1, _s2mpi_canvas_y2;
+  float *_s2mpi_canvas_x1arr, *_s2mpi_canvas_x2arr, *_s2mpi_canvas_y1arr, *_s2mpi_canvas_y2arr;
+  float *_s2mpi_scr_x1arr, *_s2mpi_scr_x2arr, *_s2mpi_scr_y1arr, *_s2mpi_scr_y2arr;
+  XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
+  int *_s2mpi_pwarr, *_s2mpi_pharr; 
+  int *_s2mpi_ismaster;
+#endif
+  
+  /* store for the device string in case a device needs further info */
+  char _s2_devstr[128];
   
 #if defined(__cplusplus) && !defined(S2_CPPBUILD)
 } // extern "C" {

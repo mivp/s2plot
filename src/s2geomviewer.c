@@ -182,12 +182,60 @@ void MakeMaterial(void)
   }
 }
 
+void kooimaProjection(XYZ pa, XYZ pb, XYZ pc, XYZ pe, float n, float f) {
+
+  XYZ va, vb, vc;
+  XYZ vr, vu, vn;
+  float l, r, b, t, d, M[16];
+
+  // Compute an orthonormal basis for the screen.
+  vr = VectorSub(pa, pb);
+  vu = VectorSub(pa, pc);
+  Normalise(&vr);
+  Normalise(&vu);
+  vn = CrossProduct(vr, vu);
+  Normalise(&vn);
+
+  // Compute the screen corner vectors.
+  va = VectorSub(pe, pa);
+  vb = VectorSub(pe, pb);
+  vc = VectorSub(pe, pc);
+
+  // Find the distance from the eye to screen plane.
+  d = -DotProduct(va, vn);
+
+  // Find the extent of the perpendicular projection.
+  l = DotProduct(vr, va) * n / d;
+  r = DotProduct(vr, vb) * n / d;
+  b = DotProduct(vu, va) * n / d;
+  t = DotProduct(vu, vc) * n / d;
+
+  // Load the perpendicular projection.
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glFrustum(l, r, b, t, n, f);
+
+  // Rotate the projection to be non-perpendicular.
+  memset(M, 0, 16 * sizeof (float));
+  M[0] = vr.x; M[4] = vr.y; M[ 8] = vr.z;
+  M[1] = vu.x; M[5] = vu.y; M[ 9] = vu.z;
+  M[2] = vn.x; M[6] = vn.y; M[10] = vn.z;
+  M[15] = 1.0f;
+  glMultMatrixf(M);
+
+  // Move the apex of the frustum to the origin.
+  glTranslatef(-pe.x, -pe.y, -pe.z);
+  glMatrixMode(GL_MODELVIEW);
+
+}
+
 /*
 	Create the projection matrix
 	Support perspective and parallel.
 	eye is left or right for stereo
 */
 void CreateProjection(int eye) {
+  //fprintf(stderr, "Create Projection:\n");
   double dist,ratio,radians=0,wd2,ndfl;
   double left,right,top,bottom,near,far;
   
@@ -236,9 +284,69 @@ void CreateProjection(int eye) {
       left  = - ratio * wd2;
       right =   ratio * wd2;
     }
-    top    =   wd2;
-    bottom = - wd2;
-    glFrustum(left,right,bottom,top,near,far);
+
+#if defined(S2MPICH)
+    if (_s2mpi_world_size > 1) {
+
+    //fprintf(stderr, "Kooima Projection code\n");
+    
+    // to support panels we need to compute a projection for the visible
+    // section of this display screen. So rather than _s2mpi_pa, pb, pc,
+    // we must compute new pa, pb, pc that refer to the visible part of
+    // the active panel on this display screen. Argh.
+
+    float px1, px2, py1, py2;
+    px1 = _s2_panels[_s2_activepanel].x1;
+    /* do not clip - this totally ruins the purpose of allowing a single
+     * physical display to be a fraction of the display */
+    //px1 = (px1 < 0.0) ? 0.0 : (px1 > 1.0) ? 1.0 : px1;
+    px2 = _s2_panels[_s2_activepanel].x2;
+    //px2 = (px2 < 0.0) ? 0.0 : (px2 > 1.0) ? 1.0 : px2;
+    py1 = _s2_panels[_s2_activepanel].y1;
+    //py1 = (py1 < 0.0) ? 0.0 : (py1 > 1.0) ? 1.0 : py1;
+    py2 = _s2_panels[_s2_activepanel].y2;
+    //py2 = (py2 < 0.0) ? 0.0 : (py2 > 1.0) ? 1.0 : py2;
+    
+    XYZ ppa, ppb, ppc;
+    XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);
+    XYZ screen_up = VectorSub(_s2mpi_pa, _s2mpi_pc);
+    ppa = VectorAdd(VectorAdd(_s2mpi_pa, VectorMul(screen_rgt, px1)),
+		    VectorMul(screen_up, py1));
+    ppb = VectorAdd(ppa, VectorMul(screen_rgt, px2-px1));
+    ppc = VectorAdd(ppa, VectorMul(screen_up, py2-py1));
+
+    // compute eye offset vector: parallel to right vector on screen
+    Normalise(&screen_rgt);
+    float ndfl    = near / camera.focallength;
+    XYZ eye_delta = VectorMul(screen_rgt, 0.5 * camera.eyesep * ndfl);
+    
+    //XYZ eye_pos = camera.vp;
+    XYZ eye_pos = {0., 0., 0.}; // only way to change eye pos in S2MPICH
+    // mode should be by tracker
+
+    if (eye == 'l') {
+      eye_pos = VectorSub(eye_delta, eye_pos);
+    } else if (eye == 'r') {
+      eye_pos = VectorAdd(eye_delta, eye_pos);
+    }
+    near = 0.1; // fix near/far planes for this (CAVE2) mode
+    far = 1000.0;
+
+    //kooimaProjection(_s2mpi_pa, _s2mpi_pb, _s2mpi_pc, eye_pos, near, far);
+    // CANVASCANVAS
+    kooimaProjection(ppa, ppb, ppc, eye_pos, near, far);
+
+    } else {
+#endif
+
+      top    =   wd2;
+      bottom = - wd2;
+      glFrustum(left,right,bottom,top,near,far);
+    
+#if defined(S2MPICH) 
+    }
+#endif
+
     break;
   case ORTHOGRAPHIC:
     dist = VectorLength(camera.vp,camera.pr);
@@ -648,7 +756,6 @@ unsigned int _s2priv_setupTexture(int width, int height,
 /* 3d version */
 unsigned int _s2priv_setupTexture3d(int width, int height, int depth,
 				    BITMAP4 *bitmap, int usemipmaps) {
-
 #if defined(BUILDING_S2PLOT)
   if (_s2_devcap & _S2DEVCAP_NOCOLOR) {
     // desaturate the bitmap data

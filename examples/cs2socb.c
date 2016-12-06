@@ -39,7 +39,7 @@
 #include "s2opengl.h"
 #include "s2glut.h"
 
-void openglcb(void);
+void openglcb(int *eye);
 
 int main(int argc, char *argv[])
 {
@@ -69,7 +69,8 @@ int main(int argc, char *argv[])
 }
 
 /* an opengl callback */
-void openglcb(void) {
+void openglcb(int *eye) {
+  fprintf(stderr, "openglcb eye = %c\n", *(char *)eye);
   static float phase = 0.;
   float vx = 2. + 0.5 * sin(phase * M_PI * 2.);
 

@@ -1141,6 +1141,8 @@ void *cs2qocb(void);
  */
 void cs2srcb(void *remcb);
 void *cs2qrcb();
+void cs2srcb_sock(void *remcb);
+void cs2srcb_sock_write(void *remcb);
 
 /* Add a handle. */
 void ds2ah(XYZ iP, float size, COLOUR icol, COLOUR ihilite,
@@ -1421,6 +1423,10 @@ void ss2ucf(void);
 void ss2sca(float aperture);
 float ss2qca(void);
 
+/* query the camera focallength / eyesep */
+float ss2qcfl(void);
+float ss2qces(void);
+
 /* Query the camera focus point, and whether it is explicitly set.
  * The return value of set indicates whether focus is "set" or
  * "unset" - see functions ss2scf and ss2ucf.  The position of the
@@ -1588,7 +1594,7 @@ void pushVRMLname(char *iname);
  ***********************************************************************
  */
 
-
+  void s2mhsync(void *ptr, size_t size);
 
 #if defined(S2_3D_TEXTURES)
   /* textured polygon */

@@ -34,7 +34,6 @@
 
 #ifndef S2CONST_H
 #define S2CONST_H
-
 /* Colours - based on PGPlot default settings */
 #define S2_PG_BLACK 0
 #define S2_PG_WHITE 1
@@ -149,6 +148,7 @@
 #define INSPECT 0
 #define FLY     1
 #define WALK    2
+#define OBJECT  3
 
 #define NOCURSOR    0
 #define ARROWCURSOR 1
@@ -245,7 +245,11 @@
 #define S2PROMPT_LEN 80
 #define S2BASEPROMPT_LEN 30
 
-
+// this is needed to define stepping in PORT numbers for slaves
+// exceeding this does not necessarily mean failure, but it may
+// depending on the exact port and tree configuration you are using
+// in your driver code
+//#define S2MPIMAXNODES 32
 
 #endif
 

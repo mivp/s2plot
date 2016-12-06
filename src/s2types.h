@@ -428,7 +428,7 @@ typedef struct {
   
   int (*userkeys)(unsigned char *);
   void (*numcb)(int *);
-  void (*oglcb)();
+  void (*oglcb)(int *);
   int (*remcb)(char *);
   
   void (*handlecallback)(int *);

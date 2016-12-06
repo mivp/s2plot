@@ -1767,6 +1767,10 @@ void _s2priv_bb(XYZ iP, XYZ iStretch, XYZ ioffset,
   bboard_base[0].alpha = ialpha;
   bboard_base[0].trans = itrans;
   strcpy(bboard_base[0].whichscreen, _s2_whichscreen);
+  bboard_base[0].whichscreen[strlen(_s2_whichscreen)] = '\0';
+  if (strlen(bboard_base[0].whichscreen)) {
+    fprintf(stderr, "adding billboard with screen: %s\n", bboard_base[0].whichscreen);
+  }
   strncpy(bboard_base[0].VRMLname, _s2_VRMLnames[_s2_currVRMLidx], MAXVRMLLEN);
   bboard_base[0].VRMLname[MAXVRMLLEN-1] = '\0';
 
@@ -2579,50 +2583,14 @@ BITMAP4 *_s2priv_redXtexture(int w, int h) {
   return ptr;
 }
 /* 3d version */
-BITMAP4 *_s2priv_redXtexture3d(int w, int h, int d) {
+BITMAP4 *_s2priv_blankTexture3d(int w, int h, int d) {
   BITMAP4 *ptr;
-  if ((ptr = (BITMAP4 *)malloc((long)w * (long)h * (long)d * (long)sizeof(BITMAP4))) == NULL) {
+  if ((ptr = (BITMAP4 *)calloc(w * sizeof(BITMAP4), h * d)) == NULL) {
     _s2error("(internal)", "failed to allocated internal texture memory");
   }
-  fprintf(stderr, "memset 0\n");
-  memset(ptr, 0, (long)w * (long)h * (long)d * (long)sizeof(BITMAP4));
-  return ptr;
-
-  long i, j, k, idx;
-  idx = 0;
-
-  for (k = 0; k < d; k++) {
-  
-    for (j = 0; j < h; j++) {
-
-      // black bg, + blue + yellow borders
-      for (i = 0; i < w; i++) {      
-	ptr[idx].r = ptr[idx].g = ptr[idx].b = 0;
-	ptr[idx].r = 255;
-	ptr[idx].a = 160;
-	if ((i == 1) || (i == (w-1-1))) {
-	  ptr[idx].g = 255;
-	  ptr[idx].r = 255;
-	}
-	if ((j == 1) || (j == (h-1-1))) {
-	  ptr[idx].b = 255;
-	  ptr[idx].g = 255;
-	}
-	if ((k == 1) || (k == (d-1-1))) {
-	  ptr[idx].b = 255;
-	  ptr[idx].g = 255;
-	}
-	idx++;
-      }
-      
-      // red x ???!?!?!?
-      i = (float)j / (float)(h-1) * (float)(w-1);
-      i = (i < 0) ? 0 : i;
-      i = (i > w-1) ? w-1 : i;
-      ptr[(j * w + i)].r = 255;
-      ptr[(j * w + (w-1)-i)].r = 255;
-      
-    }
+  long il;
+  for (il = 0; il < w; il++) {
+    memset((void *)(ptr + il * h * d), 0, sizeof(BITMAP4) * h * d);
   }
   return ptr;
 }
@@ -5629,9 +5597,7 @@ unsigned int ss2ct(int width, int height) {
 #if defined(S2_3D_TEXTURES)
 /* 3d texture version */
 unsigned int ss2c3dt(int width, int height, int depth) {
-  BITMAP4 *bitmap = _s2priv_redXtexture3d(width, height, depth);
-  // use mipmaps
-  //return _s2priv_setupTexture3d(width, height, depth, bitmap, 1);
+  BITMAP4 *bitmap = _s2priv_blankTexture3d(width, height, depth);
   // no mipmaps
   return _s2priv_setupTexture3d(width, height, depth, bitmap, 0);
 }
@@ -7645,7 +7611,7 @@ void *cs2qcb(void) {
 
 /* register the function that draws direct OpenGL graphics when called */
 void cs2socb(void *icbfn) {
-  _s2_oglcb = (void (*)())icbfn;
+  _s2_oglcb = (void (*)(int *))icbfn;
 }
 void *cs2qocb(void) {
   return (void *)_s2_oglcb;
@@ -7836,6 +7802,14 @@ void ss2sca(float aperture) {
 }
 float ss2qca(void) {
   return camera.aperture;
+}
+
+float ss2qcfl(void) {
+  return camera.focallength;
+}
+
+float ss2qces(void) {
+  return camera.eyesep;
 }
 
 /* set spin speed */

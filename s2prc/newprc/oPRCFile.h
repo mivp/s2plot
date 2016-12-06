@@ -30,9 +30,9 @@
 #include <stack>
 #include <string>
 
-#if defined(S2LINUX)
+//#if defined(S2LINUX)
 #include <string.h>
-#endif
+//#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

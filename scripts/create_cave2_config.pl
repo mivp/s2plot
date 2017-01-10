@@ -7,13 +7,15 @@ use Math::Trig;
 # +ve x is to the right looking into the CAVE2
 # +ve z is backwards looking into the CAVE2
 # and therefore $ve y is up, for a right hand coordinate system
+$screeny = 0;
 
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 3;           # ahem, number of screens :-)
-$screenx = 320;          # npixels in x 
-$device = "/S2MONO";
+$nscreens = 14;           # ahem, number of screens :-)
+$screenx = 1366;         # npixels in x 
+$screeny = 3072;         # npixels in y
+$device = "/S2INTERF";
 
 $nmasterscreens = 1;       # 0 no master, 1 = master
 $masterdiagonal = sqrt(2400.0*2400.0 + 4000.0*4000.0);
@@ -76,7 +78,7 @@ if ($nmasterscreens > 1) {
 	$canvas_y1 = 0.0;
 	$canvas_y2 = 1.0;
 	
-	printf STDOUT "%d m $device $dx $dy %f %f %f %f %f %f %f %f %f %f %f %f %f\n", $count, $canvas_x1, $canvas_y1, $canvas_x2, $canvas_y2, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
+	printf STDOUT "%d m $masterdevice $dx $dy %f %f %f %f %f %f %f %f %f %f %f %f %f\n", $count, $canvas_x1, $canvas_y1, $canvas_x2, $canvas_y2, $pa_x,$pa_y,$pa_z, $pb_x,$pb_y,$pb_z, $pc_x,$pc_y,$pc_z;
 	$count = $count + 1;
     }
 
@@ -85,7 +87,11 @@ if ($nmasterscreens > 1) {
 
 
 $dx = $screenx;
-$dy = $dx / $aspect;
+if ($screeny > 0) {
+  $dy = $screeny; 
+} else {
+  $dy = $dx / $aspect;
+}
 
 # convert to metres
 $diagonal /= 1000.0;

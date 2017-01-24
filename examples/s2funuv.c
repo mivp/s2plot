@@ -46,16 +46,16 @@
 
 
 /* Parametric functions for surface */
-inline float tkx(float *u, float *v) {
+float tkx(float *u, float *v) {
   return R2 * cos(*v) * cos(*u) + R1 * cos(*u) * (1. + AMP * cos(*u * NTW));
 }
-inline float tky(float *u, float *v) {
+float tky(float *u, float *v) {
   return R2 * sin(*v) + AMP * sin(*u * NTW);
 }
-inline float tkz(float *u, float *v) {
+float tkz(float *u, float *v) {
   return R2 * cos(*v) * sin(*u) + R1 * sin(*u) * (1. + AMP * cos(*u * NTW));
 }
-inline float fcol(float *u, float *v) {
+float fcol(float *u, float *v) {
   return 0.5 + sin(0.5 * *u) * AMP * sin(*v);
 }
 

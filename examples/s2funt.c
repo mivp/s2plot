@@ -44,7 +44,7 @@ float fx(float *t)
   return XLIMIT * sin(*t);
 }
 
-inline float fy(float *t)
+float fy(float *t)
 {
   return YLIMIT * *t / TWOPI * cos(*t);
 }

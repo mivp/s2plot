@@ -55,8 +55,8 @@ if ($thisdir != $S2PATH) then
 endif
 
 if ( { ./scripts/build-lib.csh $1 } ) then
-  ./scripts/build-apps.csh
-  ./scripts/build-viewer.csh
+#  ./scripts/build-apps.csh  # s2slides and s2anim disabled by default
+#  ./scripts/build-viewer.csh # ditto
   ./scripts/build-examples.csh
   ./scripts/build-prc-module.csh
 endif

@@ -12,7 +12,7 @@ $screeny = 0;
 # constants
 $diagonal = sqrt(2400.0*2400.0 + 1000.0*1000.0); # screen diagonal in mm
 $aspect = 16.0 / 36.0;   # screen aspect ratio x/y
-$nscreens = 14;           # ahem, number of screens :-)
+$nscreens = 20;           # ahem, number of screens :-)
 $screenx = 1366;         # npixels in x 
 $screeny = 3072;         # npixels in y
 $device = "/S2INTERF";

@@ -9196,11 +9196,12 @@ void drawView(char *projinfo, double camsca) {
       float p0x = 0.5, p0y = 0.5;
       int ii;
       int foundpc = 0, foundp0 = 0;
+#define WEPS 0.0001
       for (ii = 0; (ii < _s2mpi_world_size) && !(foundpc && foundp0); ii++) {
-	if ((_s2mpi_canvas_x1arr[ii] <= ccx) &&
-	    (ccx <= _s2mpi_canvas_x2arr[ii]) &&
-	    (_s2mpi_canvas_y1arr[ii] <= ccy) &&
-	    (ccy <= _s2mpi_canvas_y2arr[ii]) && //
+	if ((_s2mpi_canvas_x1arr[ii] <= ccx+WEPS) &&
+	    (ccx-WEPS <= _s2mpi_canvas_x2arr[ii]) &&
+	    (_s2mpi_canvas_y1arr[ii] <= ccy+WEPS) &&
+	    (ccy-WEPS <= _s2mpi_canvas_y2arr[ii]) && //
 	    !_s2mpi_ismaster[ii]) {
 	  foundpc = 1;
 	  // fraction of THIS display screen to centre of panel
@@ -9238,7 +9239,18 @@ void drawView(char *projinfo, double camsca) {
       }
 	  
       if (!foundpc) {
-	fprintf(stderr, "did not find panel centre\n");
+	fprintf(stderr, "Panel pcx, pcy = %f, %f; ccx, ccy = %f, %f\n", 
+		pcx, pcy, ccx, ccy);
+	fprintf(stderr, "> did not find panel centre for world_rank=%d\n\n", _s2mpi_world_rank);
+	fprintf(stderr, "x1arrs were \t");
+	for (ii = 0; ii < _s2mpi_world_rank; ii++) {
+	  if (!_s2mpi_ismaster[ii]) {
+	    fprintf(stderr, "ii=%d %f \t", ii, _s2mpi_canvas_x1arr[ii]);
+	  }
+	}
+	fprintf(stderr, "\n\n");
+	  
+
       } else if (!foundp0) {
 	fprintf(stderr, "   did not find canvas centre\n");
       } else {
@@ -9246,6 +9258,8 @@ void drawView(char *projinfo, double camsca) {
 	  //fprintf(stderr, "canvas_centre = %f,%f,%f; panel_centre = %f,%f,%f\n", 
 	  //	  canvas_centre.x, canvas_centre.y, canvas_centre.z,
 	  //	  s2panel_centre.x, s2panel_centre.y, s2panel_centre.z);
+	} else {
+	  fprintf(stderr, "_s2mpi_world_rank=%d, s2panel_centre={%f,%f,%f), canvas_centre=(%f,%f,%f)\n", _s2mpi_world_rank, s2panel_centre.x, s2panel_centre.y, s2panel_centre.z, canvas_centre.x, canvas_centre.y, canvas_centre.z);
 	}
       }
       
@@ -9261,6 +9275,14 @@ void drawView(char *projinfo, double camsca) {
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
+#if defined(S2MPICH)
+    GLint xview[4];
+    glGetIntegerv(GL_VIEWPORT, xview);
+    fprintf(stderr, "worldrank: %d, view = %d, %d, %d, %d\n", _s2mpi_world_rank, view[0],
+	    view[1], view[2], view[3]);
+    fprintf(stderr, "worldrank: %d, xview = %d, %d, %d, %d\n\n\n", _s2mpi_world_rank, xview[0],
+	    xview[1], xview[2], xview[3]);
+#endif
 #endif
 
     glMatrixMode(GL_MODELVIEW);
@@ -9314,7 +9336,7 @@ void drawView(char *projinfo, double camsca) {
       float rrad = acos(costh);
       double rx[16];
       XYZ up = {0., 1., 0.};
-      //fprintf(stderr, "rotation is %f degrees\n", rrad * 180.0 / M_PI);
+      fprintf(stderr, "worldrank=%d, rotation is %f degrees\n", _s2mpi_world_rank, rrad * 180.0 / M_PI);
       
       // sign of rotation
       XYZ tmp = CrossProduct(canvas_centre, s2panel_centre);

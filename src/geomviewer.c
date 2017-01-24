@@ -9276,10 +9276,32 @@ void drawView(char *projinfo, double camsca) {
 	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
 	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
 #if defined(S2MPICH)
+    //fprintf(stderr, "worldrank: %d, view = %d, %d, %d, %d\n", _s2mpi_world_rank, view[0],
+    //	    view[1], view[2], view[3]);
+    int vx0, vdx, vy0, vdy;
+    vx0 = (int)(x0 + _s2_panels[spid].x1 * (float)dx);
+    vy0 = (int)(y0 + _s2_panels[spid].y1 * (float)dy);
+    vdx = (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx);
+    vdy = (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy);
+    // we need to constrain viewport to less than typicall 16384 pixels width/height
+    // the practical way to do this is to restrict the viewport to the minimum surface
+    // of the whole screen/window and the just computed vx0,vy0,vdx,vdy. Then the
+    // entire viewport needs to be kept in mind for screen-based drawing.  I.e. this
+    // needs a reworked solution for CAVE2 where the panel coordinates WILL exceed
+    // 16384 (set glGet GL_MAX_VIEWPORT_SIZE).
+    // NB DBARNES
+    // IF YOU CLIP HERE YOU ALSO HAVE TO CLIP BEFORE CALLING KOOIMAPROJECTION in s2geomviewer.c
+    int vx1 = vx0 + vdx - 1;
+    int vy1 = vy0 + vdy - 1;
+    vx0 = (vx0 < view[0]) ? view[0] : vx0;
+    vy0 = (vy0 < view[1]) ? view[1] : vy0;
+    vx1 = (vx1 > view[0]+view[2]-1) ? view[2] : vx1;
+    vy1 = (vy1 > view[1]+view[3]-1) ? view[3] : vy1;
+    glViewport(vx0, vy0, vx1-vx0+1, vy1-vy0+1);
+    
+    
     GLint xview[4];
     glGetIntegerv(GL_VIEWPORT, xview);
-    fprintf(stderr, "worldrank: %d, view = %d, %d, %d, %d\n", _s2mpi_world_rank, view[0],
-	    view[1], view[2], view[3]);
     fprintf(stderr, "worldrank: %d, xview = %d, %d, %d, %d\n\n\n", _s2mpi_world_rank, xview[0],
 	    xview[1], xview[2], xview[3]);
 #endif

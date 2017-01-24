@@ -299,13 +299,13 @@ void CreateProjection(int eye) {
     px1 = _s2_panels[_s2_activepanel].x1;
     /* do not clip - this totally ruins the purpose of allowing a single
      * physical display to be a fraction of the display */
-    //px1 = (px1 < 0.0) ? 0.0 : (px1 > 1.0) ? 1.0 : px1;
+    px1 = (px1 < 0.0) ? 0.0 : (px1 > 1.0) ? 1.0 : px1;
     px2 = _s2_panels[_s2_activepanel].x2;
-    //px2 = (px2 < 0.0) ? 0.0 : (px2 > 1.0) ? 1.0 : px2;
+    px2 = (px2 < 0.0) ? 0.0 : (px2 > 1.0) ? 1.0 : px2;
     py1 = _s2_panels[_s2_activepanel].y1;
-    //py1 = (py1 < 0.0) ? 0.0 : (py1 > 1.0) ? 1.0 : py1;
+    py1 = (py1 < 0.0) ? 0.0 : (py1 > 1.0) ? 1.0 : py1;
     py2 = _s2_panels[_s2_activepanel].y2;
-    //py2 = (py2 < 0.0) ? 0.0 : (py2 > 1.0) ? 1.0 : py2;
+    py2 = (py2 < 0.0) ? 0.0 : (py2 > 1.0) ? 1.0 : py2;
     
     XYZ ppa, ppb, ppc;
     XYZ screen_rgt = VectorSub(_s2mpi_pa, _s2mpi_pb);

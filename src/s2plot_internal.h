@@ -350,6 +350,9 @@ extern "C" {
   XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
   int *_s2mpi_pwarr, *_s2mpi_pharr; 
   int *_s2mpi_ismaster;
+  int _s2mpi_unclipped_vp[4];
+  int _s2mpi_clipview;
+  double _s2mpi_unclipped_proj[16];
 #endif
   
   /* store for the device string in case a device needs further info */

@@ -1353,13 +1353,22 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
   /* get projections needed for screen coordinate drawing */
   GLdouble model[16];
   glGetDoublev(GL_MODELVIEW_MATRIX, model);
-  //glGetDoublev(GL_MODELVIEW_MATRIX, _ss_model);
   GLdouble proj[16];
+#if defined(S2MPICH)
+  memcpy(proj, _s2mpi_unclipped_proj, 16 * sizeof(double));
+#else
   glGetDoublev(GL_PROJECTION_MATRIX, proj);
-  //glGetDoublev(GL_PROJECTION_MATRIX, _ss_proj);
+#endif
   GLint view[4];
+#if defined(S2MPICH)
+  view[0] = _s2mpi_unclipped_vp[0];
+  view[1] = _s2mpi_unclipped_vp[1];
+  view[2] = _s2mpi_unclipped_vp[2];
+  view[3] = _s2mpi_unclipped_vp[3];
+#else
   glGetIntegerv(GL_VIEWPORT, view);
   //glGetIntegerv(GL_VIEWPORT, _ss_view);
+#endif
   GLdouble vtx, vty, vtz; /* vertices */
   XYZ vt, vtn;
 #endif
@@ -9259,11 +9268,22 @@ void drawView(char *projinfo, double camsca) {
 	  //	  canvas_centre.x, canvas_centre.y, canvas_centre.z,
 	  //	  s2panel_centre.x, s2panel_centre.y, s2panel_centre.z);
 	} else {
-	  fprintf(stderr, "_s2mpi_world_rank=%d, s2panel_centre={%f,%f,%f), canvas_centre=(%f,%f,%f)\n", _s2mpi_world_rank, s2panel_centre.x, s2panel_centre.y, s2panel_centre.z, canvas_centre.x, canvas_centre.y, canvas_centre.z);
+	  //fprintf(stderr, "_s2mpi_world_rank=%d, s2panel_centre={%f,%f,%f), canvas_centre=(%f,%f,%f)\n", _s2mpi_world_rank, s2panel_centre.x, s2panel_centre.y, s2panel_centre.z, canvas_centre.x, canvas_centre.y, canvas_centre.z);
 	}
       }
       
     }
+#endif
+
+#if defined(S2MPICH)
+    _s2mpi_clipview = 0;
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    CreateProjection(projinfo[0]);
+    // fetch and save the projection into _s2mpi_unclipped_proj for 
+    // screen coordinate drawing
+    glGetDoublev(GL_PROJECTION_MATRIX, _s2mpi_unclipped_proj);
+    _s2mpi_clipview = 1;
 #endif
 
     glMatrixMode(GL_PROJECTION);
@@ -9283,7 +9303,14 @@ void drawView(char *projinfo, double camsca) {
     vy0 = (int)(y0 + _s2_panels[spid].y1 * (float)dy);
     vdx = (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx);
     vdy = (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy);
-    // we need to constrain viewport to less than typicall 16384 pixels width/height
+
+    // save this unclipped viewport for screen geometry later
+    _s2mpi_unclipped_vp[0] = vx0;
+    _s2mpi_unclipped_vp[1] = vy0;
+    _s2mpi_unclipped_vp[2] = vdx;
+    _s2mpi_unclipped_vp[3] = vdy;
+
+    // we need to constrain viewport to less than typicall 16385 pixels width/height
     // the practical way to do this is to restrict the viewport to the minimum surface
     // of the whole screen/window and the just computed vx0,vy0,vdx,vdy. Then the
     // entire viewport needs to be kept in mind for screen-based drawing.  I.e. this
@@ -9300,10 +9327,10 @@ void drawView(char *projinfo, double camsca) {
     glViewport(vx0, vy0, vx1-vx0+1, vy1-vy0+1);
     
     
-    GLint xview[4];
-    glGetIntegerv(GL_VIEWPORT, xview);
-    fprintf(stderr, "worldrank: %d, xview = %d, %d, %d, %d\n\n\n", _s2mpi_world_rank, xview[0],
-	    xview[1], xview[2], xview[3]);
+    //GLint xview[4];
+    //glGetIntegerv(GL_VIEWPORT, xview);
+    //fprintf(stderr, "worldrank: %d, xview = %d, %d, %d, %d\n\n\n", _s2mpi_world_rank, xview[0],
+    //	    xview[1], xview[2], xview[3]);
 #endif
 #endif
 
@@ -9358,7 +9385,7 @@ void drawView(char *projinfo, double camsca) {
       float rrad = acos(costh);
       double rx[16];
       XYZ up = {0., 1., 0.};
-      fprintf(stderr, "worldrank=%d, rotation is %f degrees\n", _s2mpi_world_rank, rrad * 180.0 / M_PI);
+      //fprintf(stderr, "worldrank=%d, rotation is %f degrees\n", _s2mpi_world_rank, rrad * 180.0 / M_PI);
       
       // sign of rotation
       XYZ tmp = CrossProduct(canvas_centre, s2panel_centre);

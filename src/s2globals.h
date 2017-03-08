@@ -387,6 +387,9 @@ extern float *_s2mpi_scr_x1arr, *_s2mpi_scr_x2arr, *_s2mpi_scr_y1arr, *_s2mpi_sc
 extern XYZ *_s2mpi_paarr, *_s2mpi_pbarr, *_s2mpi_pcarr;
 extern int *_s2mpi_pwarr, *_s2mpi_pharr; 
 extern int *_s2mpi_ismaster;
+extern int _s2mpi_unclipped_vp[4];
+extern int _s2mpi_clipview;
+extern double _s2mpi_unclipped_proj[16];
 #endif
 
 /* store for the device string in case a device needs further info */

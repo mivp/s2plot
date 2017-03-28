@@ -5729,6 +5729,7 @@ void _s2priv_drawBillboards(int doscreen) {
 
 #if defined(S2MPICH)
   if (_s2mpi_world_size > 1) {
+
     double bbmodel[16];
     glGetDoublev(GL_MODELVIEW_MATRIX, bbmodel);
     RGT.x = bbmodel[0];
@@ -5737,6 +5738,18 @@ void _s2priv_drawBillboards(int doscreen) {
     UP.x = bbmodel[1];
     UP.y = bbmodel[5];
     UP.z = bbmodel[9];
+
+    // CAVE2 ASSUMPTION of CYLINDRICAL GEOM: rotate the 
+    // RIGHT VECTOR according to the RIGHT VECTOR fo the 
+    // screen itself in relation to centre screen. Issues
+    // remain near edges of screens. DGB 20170328.
+    XYZ scRGT = VectorSub(_s2mpi_pa, _s2mpi_pb);
+    //XYZ scUP = VectorSub(_s2mpi_pa, _s2mpi_pc);
+    Normalise(&scRGT);
+    float costh = scRGT.x;
+    float th = acos(costh);
+    XYZ newRGT = ArbitraryRotate(RGT, -1. * th, UP);
+    RGT = newRGT;
 
     nRGT = RGT;
     Normalise(&nRGT);
@@ -6507,7 +6520,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    /* object mode control */
    _s2_object_trans.x = _s2_object_trans.y = _s2_object_trans.z = 0.0;
    if (options.interaction == OBJECT) {
-     _s2_object_trans.z = -3.0;
+     //_s2_object_trans.z = -3.0;
    }
    int xi;
    for (xi = 0; xi < 16; xi++) {

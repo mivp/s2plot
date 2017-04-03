@@ -329,7 +329,7 @@ void CreateProjection(int eye) {
     XYZ eye_delta = VectorMul(screen_rgt, 0.5 * camera.eyesep * ndfl);
     
     //XYZ eye_pos = camera.vp;
-    XYZ eye_pos = {0., 1.8, 0.}; // only way to change eye pos in S2MPICH
+    XYZ eye_pos = {0., 1.6, 0.}; // only way to change eye pos in S2MPICH
     // mode should be by tracker
 
     if (eye == 'l') {

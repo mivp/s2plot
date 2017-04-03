@@ -6139,7 +6139,14 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
       cfg = "s2config.txt";
     }
     /* cfg is now the filename for the config file */
-    
+
+    /* strip whitespace off the end - may come from FORTRAN */
+    int lnx = strlen(cfg) - 1;
+    while (cfg[lnx] == ' ' && lnx > 0) {
+      lnx--;
+    }
+    cfg[lnx+1] = '\0';
+
     /* read config file - select "rank"th row - and store p_a, p_b, p_c vectors
      * defining BLC, TLC, BRC of this screen in world coordinates centred at 
      * origin of display system e.g. centre of CAVE2

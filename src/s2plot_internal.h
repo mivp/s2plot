@@ -353,6 +353,8 @@ extern "C" {
   int _s2mpi_unclipped_vp[4];
   int _s2mpi_clipview;
   double _s2mpi_unclipped_proj[16];
+  int *_s2mpi_slave_connections;
+  char **_s2mpi_hostnames;
 #endif
   
   /* store for the device string in case a device needs further info */

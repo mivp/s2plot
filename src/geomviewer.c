@@ -69,6 +69,7 @@ int(*_device_keybd)(char);
 
 #if defined (S2MPICH)
 #include <mpi.h>
+#define S2MPI_PORT_OFFSET_SCALE 100
 #endif
 
 #if defined(S2OPENMP) && !defined(BUILDING_VIEWER)
@@ -1711,8 +1712,9 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
     // NB this implementation of transparency is a hack without proper sorting, 
     // and only additive transparency (= result approaches 1.0)
 #if defined(BUILDING_S2PLOT)
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    // and TURN OFF AS THIS IS BUGGY DGB 20170404
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 #endif
 
     //oldsize = line[0].width;
@@ -6127,6 +6129,8 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
     _s2mpi_pwarr = (int *)malloc(_s2mpi_world_size * sizeof(int));
     _s2mpi_pharr = (int *)malloc(_s2mpi_world_size * sizeof(int));
     _s2mpi_ismaster = (int *)malloc(_s2mpi_world_size * sizeof(int));
+    _s2mpi_slave_connections = (int *)NULL;
+
 
     /* find config file name */
     char *cfg = strtok(_s2_devstr, "/"); // cfg = "S2MULTI"
@@ -6255,6 +6259,25 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
     ifullscreen = _s2_valid_devices[mydeviceid].fullscreen;
     istereo = _s2_valid_devices[mydeviceid].stereo;
   }
+
+  // find out our network of MPI slave hostnames
+  _s2mpi_hostnames = (char **)malloc(_s2mpi_world_size * sizeof(char *));
+  int isl;
+  char mpi_hostname[MPI_MAX_PROCESSOR_NAME];
+  int resultlen;
+  MPI_Status mpistat;
+  for (isl = 1; isl < _s2mpi_world_size; isl++) {
+    if (_s2mpi_world_rank > 0) {
+      MPI_Get_processor_name(mpi_hostname, &resultlen);	    
+      /* 154 ... better make it a #define */
+      MPI_Send(mpi_hostname, MPI_MAX_PROCESSOR_NAME, MPI_CHAR, 0, 154, MPI_COMM_WORLD);
+    } else {
+      MPI_Recv(mpi_hostname, MPI_MAX_PROCESSOR_NAME, MPI_CHAR, isl, 154, MPI_COMM_WORLD, &mpistat);
+      _s2mpi_hostnames[isl] = (char *)malloc(MPI_MAX_PROCESSOR_NAME * sizeof(char));
+      strncpy(_s2mpi_hostnames[isl], mpi_hostname, MPI_MAX_PROCESSOR_NAME-1);
+    }
+  }
+
 #endif
 
   // name of our device driver - default none
@@ -6767,17 +6790,21 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      }
    }
    // only start remote thread socket on master node of MPI runs
+   // NO --- start slave nodes too but offset the PORT
 #if defined(S2MPICH)
-   if (_s2mpi_world_rank == 0) {
+   //if (_s2mpi_world_rank == 0) {
      //_s2_remoteport += (_s2mpi_world_rank) * S2MPIMAXNODES;
 #endif
    if (_s2_remoteport) {
+#if defined(S2MPICH)
+     _s2_remoteport += _s2mpi_world_rank * S2MPI_PORT_OFFSET_SCALE;
+#endif
      pthread_t p_thread;
      int a = 1;
      pthread_create(&p_thread, NULL, remote_thread_sub, (void *)&a);
    }
 #if defined(S2MPICH)
-   }
+   //}
 #endif
 
    /* everything seems to be ok */
@@ -6804,23 +6831,37 @@ void *remote_thread_sub(void *data) {
 
   port = _s2_remoteport;
 
+  char PORTLOGSTR[50];
+  sprintf(PORTLOGSTR, "port:%d.log", port);
+
   if (sock_getname (hostname, 100, 1) < 0) {
+    FILE *TMPLOG = fopen(PORTLOGSTR, "w");
+    fprintf (TMPLOG, "Error getting hostname.\n");
+    fclose(TMPLOG);
     perror ("Error getting hostname.\n");
     return NULL;
   }
 
   sfd = sock_create (&port);
   if (sfd < 0)  {
+    FILE *TMPLOG = fopen(PORTLOGSTR, "w");
+    fprintf (TMPLOG, "Error creating socket.\n");
+    fclose(TMPLOG);
     perror ("Error creating socket\n");
     return NULL;
   }
 
+  sprintf(PORTLOGSTR, "%s:%d.log", hostname, port);
   do  {
 
-    fprintf (stderr, "%s available on %d\n",hostname, port);
+    FILE *TMPLOG = fopen(PORTLOGSTR, "a");
+
+    fprintf (TMPLOG, "%s available on %d\n",hostname, port);
+    fclose(TMPLOG);
     cfd = sock_accept (sfd);
-    fprintf (stderr, "Connection accepted.\n");
+    fprintf (TMPLOG, "Connection accepted.\n");
     
+
     sockin = fdopen (cfd, "r");
     sockout = fdopen(cfd, "w");
 
@@ -6833,6 +6874,37 @@ void *remote_thread_sub(void *data) {
 
       if (rgot && !feof(sockin)) {
 	//fprintf (stderr, "Received %d bytes: %s\n", (int)strlen(rgot), inmsg);
+
+#if defined(S2MPICH)
+	int isl;
+	if (_s2mpi_world_rank == 0) {
+	  // send bufsize inmsg to all slave nodes 
+	  if (!_s2mpi_slave_connections) {
+	    sleep(10);
+	    // 1. allocate array
+	    _s2mpi_slave_connections = (int *)malloc(_s2mpi_world_size * sizeof (int));
+	    // 2. connect to each slave
+	    for (isl = 1; isl < _s2mpi_world_size; isl++) {
+	      // loop starts at 1 as we don't connect to self (master)
+	      //noting slave port is _s2_remoteport + S2MPI_PORT_OFFSET_SCALE * isl
+	      _s2mpi_slave_connections[isl] = sock_open(_s2mpi_hostnames[isl], _s2_remoteport + S2MPI_PORT_OFFSET_SCALE * isl);
+	      fprintf(stderr, "Connected to %s on port %d, fd=%d\n", _s2mpi_hostnames[isl], _s2_remoteport + S2MPI_PORT_OFFSET_SCALE * isl, _s2mpi_slave_connections[isl]);
+	    }
+	  }
+	  // 2. send
+	  int isl;
+	  int to_read=0, to_write=1;
+	  for (isl = 1; isl < _s2mpi_world_size; isl++) {
+	    if (sock_ready(_s2mpi_slave_connections[isl], &to_read, &to_write, 5.0)) {
+	      fprintf(stderr, "sock not ready on slave %d, fd=%d!\n", isl, _s2mpi_slave_connections[isl]);
+	    } else {
+	      sock_write(_s2mpi_slave_connections[isl], inmsg, bufsize);
+	      fprintf(stderr, "sent remote data to slave %d\n", isl);
+	    }
+	  }
+	}
+#endif
+
 
 	int consumed = 0;
 	if (_s2_remcb) {

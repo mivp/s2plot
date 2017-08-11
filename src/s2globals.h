@@ -390,6 +390,8 @@ extern int *_s2mpi_ismaster;
 extern int _s2mpi_unclipped_vp[4];
 extern int _s2mpi_clipview;
 extern double _s2mpi_unclipped_proj[16];
+extern int *_s2mpi_slave_connections;
+extern char **_s2mpi_hostnames;
 #endif
 
 /* store for the device string in case a device needs further info */

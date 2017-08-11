@@ -190,6 +190,7 @@ int sock_open (const char *host, int port)
     
     server.sin_family = AF_INET;
     
+#if (0)
 #ifdef MSDOS
     memset((char *)&server, 0, sizeof(server));
     memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
@@ -197,7 +198,13 @@ int sock_open (const char *host, int port)
     memcpy(&(server.sin_addr.s_addr), hp->h_addr, hp->h_length);
 #endif
     server.sin_port = htons(port);
-    
+#endif
+
+    bzero((char *)&server, sizeof(server));
+    server.sin_family = AF_INET;
+    bcopy((char *)hp->h_addr, (char *)&server.sin_addr.s_addr, hp->h_length);
+    server.sin_port = htons(port);
+
   }
   
 #ifdef _REENTRANT

@@ -6833,7 +6833,6 @@ void *remote_thread_sub(void *data) {
 
   char PORTLOGSTR[50];
   sprintf(PORTLOGSTR, "port:%d.log", port);
-
   if (sock_getname (hostname, 100, 1) < 0) {
     FILE *TMPLOG = fopen(PORTLOGSTR, "w");
     fprintf (TMPLOG, "Error getting hostname.\n");
@@ -6852,15 +6851,14 @@ void *remote_thread_sub(void *data) {
   }
 
   sprintf(PORTLOGSTR, "%s:%d.log", hostname, port);
+
   do  {
 
     FILE *TMPLOG = fopen(PORTLOGSTR, "a");
-
     fprintf (TMPLOG, "%s available on %d\n",hostname, port);
-    fclose(TMPLOG);
     cfd = sock_accept (sfd);
     fprintf (TMPLOG, "Connection accepted.\n");
-    
+    //fclose(TMPLOG);
 
     sockin = fdopen (cfd, "r");
     sockout = fdopen(cfd, "w");
@@ -6873,14 +6871,16 @@ void *remote_thread_sub(void *data) {
       rgot = fgets (inmsg, bufsize, sockin);
 
       if (rgot && !feof(sockin)) {
-	//fprintf (stderr, "Received %d bytes: %s\n", (int)strlen(rgot), inmsg);
+	fprintf (stderr, "Received %d bytes: %s\n", (int)strlen(rgot), inmsg);
 
 #if defined(S2MPICH)
 	int isl;
 	if (_s2mpi_world_rank == 0) {
 	  // send bufsize inmsg to all slave nodes 
 	  if (!_s2mpi_slave_connections) {
+	    fprintf(stderr, "SLEEPING...\n");
 	    sleep(10);
+	    fprintf(stderr, "AWAKE!\n");
 	    // 1. allocate array
 	    _s2mpi_slave_connections = (int *)malloc(_s2mpi_world_size * sizeof (int));
 	    // 2. connect to each slave
@@ -6895,7 +6895,7 @@ void *remote_thread_sub(void *data) {
 	  int isl;
 	  int to_read=0, to_write=1;
 	  for (isl = 1; isl < _s2mpi_world_size; isl++) {
-	    if (sock_ready(_s2mpi_slave_connections[isl], &to_read, &to_write, 5.0)) {
+	    if (0 && sock_ready(_s2mpi_slave_connections[isl], &to_read, &to_write, 5.0)) {
 	      fprintf(stderr, "sock not ready on slave %d, fd=%d!\n", isl, _s2mpi_slave_connections[isl]);
 	    } else {
 	      sock_write(_s2mpi_slave_connections[isl], inmsg, bufsize);

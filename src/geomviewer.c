@@ -6246,6 +6246,9 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
     _s2_scr_y1 = _s2mpi_scr_y1arr[_s2mpi_world_rank];
     _s2_scr_y2 = _s2mpi_scr_y2arr[_s2mpi_world_rank];
 
+    fprintf(stderr, "rank:%d, screen (%f,%f) -> (%f,%f)\n",
+	    _s2mpi_world_rank, _s2_scr_x1, _s2_scr_y1, _s2_scr_x2, _s2_scr_y2);
+
     /*  now map mydevice to istereo and ifullscreen to use! */
     int mydeviceid = _s2priv_find_device(mydevice);
     if (mydeviceid < 0) {
@@ -6670,53 +6673,58 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
 
 #if defined(BUILDING_S2PLOT)
 
+   float env_x1, env_x2, env_y1, env_y2;
+   env_x1 = env_y1 = 0.0;
+   env_x2 = env_y2 = 1.0;
+   char *panelstr;
+   panelstr = getenv("S2PLOT_X1");
+   if (panelstr) {
+     env_x1 = atof(panelstr);
+   }
+   panelstr = getenv("S2PLOT_X2");
+   if (panelstr) {
+     env_x2 = atof(panelstr);
+   }
+   panelstr = getenv("S2PLOT_Y1");
+   if (panelstr) {
+     env_y1 = atof(panelstr);
+   }
+   panelstr = getenv("S2PLOT_Y2");
+   if (panelstr) {
+     env_y2 = atof(panelstr);
+   }
+
 #if defined(S2MPICH) // CANVASCANVAS
    if (_s2mpi_world_size > 1) {
      // done earlier in code and pulled here above.
-     //_s2_scr_x1 = -_s2mpi_canvas_x1 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
-     //_s2_scr_x2 = _s2_scr_x1 + 1.0 / (_s2mpi_canvas_x2 - _s2mpi_canvas_x1);
-     //_s2_scr_y1 = -_s2mpi_canvas_y1 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
-     //_s2_scr_y2 = _s2_scr_y1 + 1.0 / (_s2mpi_canvas_y2 - _s2mpi_canvas_y1);
+     _s2_scr_x1 = _s2mpi_scr_x1arr[_s2mpi_world_rank];
+     _s2_scr_x2 = _s2mpi_scr_x2arr[_s2mpi_world_rank];
+     _s2_scr_y1 = _s2mpi_scr_y1arr[_s2mpi_world_rank];
+     _s2_scr_y2 = _s2mpi_scr_y2arr[_s2mpi_world_rank];
 
-     // store for later use // Again ASSUMPTION that config file is in 
-     // order i.e. ln == _s2mpi_world_rank
-     //_s2mpi_scr_x1arr[_s2mpi_world_rank] = _s2_scr_x1;
-     //_s2mpi_scr_x2arr[_s2mpi_world_rank] = _s2_scr_x2;
-     //_s2mpi_scr_y1arr[_s2mpi_world_rank] = _s2_scr_y1;
-     //_s2mpi_scr_y2arr[_s2mpi_world_rank] = _s2_scr_y2;
    } else {
 #endif
-
+     
      /* get screen constraints from environment or default */
-     _s2_scr_x1 = 0.;
-     _s2_scr_x2 = 1.;
-     _s2_scr_y1 = 0.;
-     _s2_scr_y2 = 1.;
+     _s2_scr_x1 = env_x1;
+     _s2_scr_x2 = env_x2;
+     _s2_scr_y1 = env_y1;
+     _s2_scr_y2 = env_y2;
      
 #if defined(S2MPICH)
    }
 #endif
 
-   char *panelstr;
-   panelstr = getenv("S2PLOT_X1");
-   if (panelstr) {
-     _s2_scr_x1 = atof(panelstr);
-   }
-
-   panelstr = getenv("S2PLOT_X2");
-   if (panelstr) {
-     _s2_scr_x2 = atof(panelstr);
-   }
-
-   panelstr = getenv("S2PLOT_Y1");
-   if (panelstr) {
-     _s2_scr_y1 = atof(panelstr);
-   }
-
-   panelstr = getenv("S2PLOT_Y2");
-   if (panelstr) {
-     _s2_scr_y2 = atof(panelstr);
-   }
+   /* at this point, _s2_scr_x1... are set to (0,1), or according to 
+    * this panel's position in the MPI network 
+    *
+    * so we need to read in the environment X1, X2, ... and scale these
+    * into the existing range _s2_scr_x1, _x2 etc.
+    *
+    * then potentially store these back in _s2mpi_scr_x1arr[_s2mpi_world_rank] ...; so all
+    * future panel sets etc take note of the env-constrained viewport
+    *
+    * HERE */
 
    _s2_bg_texid = -1;
    panelstr = getenv("S2PLOT_BGIMG");
@@ -6724,34 +6732,22 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      _s2_bg_texid = ss2lt(panelstr);
    }
    
+
    _s2_bg_clear = 1;
    if (getenv("S2PLOT_BGCLEAR")) {
      _s2_bg_clear = 0;
    }
 
    /* set up for multiple panel capability */
-   /* allocate space for one panel */
-#if (1)
    _s2_panels = NULL;
    _s2_npanels = 0;
-   xs2ap(_s2_scr_x1, _s2_scr_y1, _s2_scr_x2, _s2_scr_y2);
+   //xs2ap(_s2_scr_x1, _s2_scr_y1, _s2_scr_x2, _s2_scr_y2);
+   // default panel is at 0,0,1,1 ... xs2ap function maps this to either 
+   // the entire display surface, or a subset depending on _s2_scr_{x,y}{1,2}
+   // values which are manipulated in S2MPI mode AND S2PLOT_{X,Y}{1,2} env
+   // mode
+   xs2ap(0., 0., 1., 1.);
    xs2cp(0);
-#else
-   _s2_panels = (S2PLOT_PANEL *)malloc(sizeof(S2PLOT_PANEL));
-   _s2_npanels = 1;
-   _s2_activepanel = 0;
-   /* set the panel location */
-   //_s2_panels[0].x1 = _s2_panels[0].y1 = 0.;
-   //_s2_panels[0].x2 = _s2_panels[0].y2 = 1.;
-   _s2_panels[0].x1 = _s2_scr_x1;
-   _s2_panels[0].x2 = _s2_scr_x2;
-   _s2_panels[0].y1 = _s2_scr_y1;
-   _s2_panels[0].y2 = _s2_scr_y2;
-   _s2_panels[0].active = 1;
-   _s2_panels[0].camera = (CAMERA *)malloc(sizeof(CAMERA));
-   _s2_panels[0].autospin = (XYZ *)malloc(sizeof(XYZ));
-   _s2_panels[0].callback = NULL;
-   _s2_panels[0].GL_listindex = -1;
 
    _s2_activepanelframecolour.r = 1.;
    _s2_activepanelframecolour.g = 1.;
@@ -6760,7 +6756,7 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
    _s2_panelframecolour.g = 0.2;
    _s2_panelframecolour.b = 0.2;
    _s2_panelframewidth = 1.0;
-#endif
+
 
    _s2_nVRMLnames = 1;
    _s2_VRMLnames = (char **)malloc(sizeof(char *));
@@ -9152,16 +9148,32 @@ void _s2_drawBGimage(void) {
   glBindTexture(GL_TEXTURE_2D, _s2_bg_texid);
 
   glBegin(GL_QUADS);
+#if defined(S2MPICH)
+  glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y1);
+#else
   glTexCoord2f(0., 0.); 
+#endif
   glVertex2f(0., 0.);
 
+#if defined(S2MPICH)
+  glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y2);
+#else
   glTexCoord2f(0., 1.);
+#endif
   glVertex2f(0., 1.);
   
+#if defined(S2MPICH)
+  glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y2);
+#else
   glTexCoord2f(1., 1.);
+#endif
   glVertex2f(1., 1.);
   
+#if defined(S2MPICH)
+  glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y1);
+#else
   glTexCoord2f(1., 0.);
+#endif
   glVertex2f(1., 0.);
   glEnd();
 

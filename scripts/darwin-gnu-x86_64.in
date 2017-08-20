@@ -46,9 +46,12 @@ set GFC=gfortran
 if ($S2MPI == yes) then
   #set COMPPATH=/opt/local/bin
   set COMMFLAGS="${COMMFLAGS} -DS2MPICH"
-  set GCC="mpicc-mpich-gcc48"
-  set GPP="mpicxx-mpich-gcc48"
-  set GFC="mpifort-mpich-gcc48"
+  #set GCC="mpicc-mpich-gcc48"
+  #set GPP="mpicxx-mpich-gcc48"
+  #set GFC="mpifort-mpich-gcc48"
+  set GCC=mpicc
+  set GPP=mpicxx
+  set GFC=mpifort
 endif
 
 set S2OSTYPE="darwin"

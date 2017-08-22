@@ -6727,8 +6727,8 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      _s2_scr_x2 = _s2_scr_x1 + env_x2 * (_s2_scr_x2 - _s2_scr_x1);
      _s2_scr_x1 = tp1;
      
-     tp1 = _s2_scr_y1 + env_x1 * (_s2_scr_y2 - _s2_scr_y1);
-     _s2_scr_y2 = _s2_scr_y1 + env_x2 * (_s2_scr_y2 - _s2_scr_y1);
+     tp1 = _s2_scr_y1 + env_y1 * (_s2_scr_y2 - _s2_scr_y1);
+     _s2_scr_y2 = _s2_scr_y1 + env_y2 * (_s2_scr_y2 - _s2_scr_y1);
      _s2_scr_y1 = tp1;
      
      fprintf(stderr, "worldrank=%d, scr range (%f,%f) -> (%f,%f)\n", _s2mpi_world_rank,

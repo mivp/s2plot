@@ -6694,6 +6694,12 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      env_y2 = atof(panelstr);
    }
 
+   /* get screen constraints from environment or default */
+   _s2_scr_x1 = env_x1;
+   _s2_scr_x2 = env_x2;
+   _s2_scr_y1 = env_y1;
+   _s2_scr_y2 = env_y2;
+
 #if defined(S2MPICH) // CANVASCANVAS
    if (_s2mpi_world_size > 1) {
      // done earlier in code and pulled here above.
@@ -6701,31 +6707,42 @@ int s2open(int ifullscreen, int istereo, int iargc, char **iargv) {
      _s2_scr_x2 = _s2mpi_scr_x2arr[_s2mpi_world_rank];
      _s2_scr_y1 = _s2mpi_scr_y1arr[_s2mpi_world_rank];
      _s2_scr_y2 = _s2mpi_scr_y2arr[_s2mpi_world_rank];
-
-   } else {
-#endif
-     
-     /* get screen constraints from environment or default */
-     _s2_scr_x1 = env_x1;
-     _s2_scr_x2 = env_x2;
-     _s2_scr_y1 = env_y1;
-     _s2_scr_y2 = env_y2;
-     
-#if defined(S2MPICH)
    }
 #endif
-
-   /* at this point, _s2_scr_x1... are set to (0,1), or according to 
-    * this panel's position in the MPI network 
+     
+#if defined(S2MPICH)
+   /* at this point, _s2_scr_x1... are set to (0,1), or according to
+    * this panel's position in the MPI network
     *
-    * so we need to read in the environment X1, X2, ... and scale these
-    * into the existing range _s2_scr_x1, _x2 etc.
-    *
-    * then potentially store these back in _s2mpi_scr_x1arr[_s2mpi_world_rank] ...; so all
-    * future panel sets etc take note of the env-constrained viewport
+    * if in MPI mode, we need to crop these according to the settings
+    * read from the environment and currently stored in env_x1, env_x2 ...
     *
     * HERE */
-
+   
+   if (_s2mpi_world_size > 1) {
+     fprintf(stderr, "worldrank=%d, scr range (%f,%f) -> (%f,%f)\n", _s2mpi_world_rank,
+	     _s2_scr_x1, _s2_scr_y1, _s2_scr_x2, _s2_scr_y2);
+     
+     float tp1 = _s2_scr_x1 + env_x1 * (_s2_scr_x2 - _s2_scr_x1);
+     _s2_scr_x2 = _s2_scr_x1 + env_x2 * (_s2_scr_x2 - _s2_scr_x1);
+     _s2_scr_x1 = tp1;
+     
+     tp1 = _s2_scr_y1 + env_x1 * (_s2_scr_y2 - _s2_scr_y1);
+     _s2_scr_y2 = _s2_scr_y1 + env_x2 * (_s2_scr_y2 - _s2_scr_y1);
+     _s2_scr_y1 = tp1;
+     
+     fprintf(stderr, "worldrank=%d, scr range (%f,%f) -> (%f,%f)\n", _s2mpi_world_rank,
+	     _s2_scr_x1, _s2_scr_y1, _s2_scr_x2, _s2_scr_y2);
+     
+     // do I need to push these back into the arrays... ?
+     _s2mpi_scr_x1arr[_s2mpi_world_rank] = _s2_scr_x1;
+     _s2mpi_scr_x2arr[_s2mpi_world_rank] = _s2_scr_x2;
+     _s2mpi_scr_y1arr[_s2mpi_world_rank] = _s2_scr_y1;
+     _s2mpi_scr_y2arr[_s2mpi_world_rank] = _s2_scr_y2;
+   }
+   
+#endif
+   
    _s2_bg_texid = -1;
    panelstr = getenv("S2PLOT_BGIMG");
    if (panelstr) {
@@ -9147,35 +9164,54 @@ void _s2_drawBGimage(void) {
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, _s2_bg_texid);
 
-  glBegin(GL_QUADS);
-#if defined(S2MPICH)
-  glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y1);
-#else
-  glTexCoord2f(0., 0.); 
-#endif
-  glVertex2f(0., 0.);
+  //fprintf(stderr, "bgimg: _s2mpi_world_size = %d\n", _s2mpi_world_size);
 
-#if defined(S2MPICH)
-  glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y2);
-#else
+#if !defined(S2MPICH)
+  
+  glBegin(GL_QUADS);
+  glTexCoord2f(0., 0.);
+  glVertex2f(0., 0.);
   glTexCoord2f(0., 1.);
-#endif
   glVertex2f(0., 1.);
-  
-#if defined(S2MPICH)
-  glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y2);
-#else
   glTexCoord2f(1., 1.);
-#endif
   glVertex2f(1., 1.);
-  
-#if defined(S2MPICH)
-  glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y1);
-#else
   glTexCoord2f(1., 0.);
-#endif
   glVertex2f(1., 0.);
   glEnd();
+  
+#else
+  
+  glBegin(GL_QUADS);
+  if (_s2mpi_world_size > 1) {
+    glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y1);
+  } else {
+    glTexCoord2f(0., 0.); 
+  }
+  glVertex2f(0., 0.);
+
+  if (_s2mpi_world_size > 1) {
+    glTexCoord2f(_s2mpi_canvas_x1, _s2mpi_canvas_y2);
+  } else {
+    glTexCoord2f(0., 1.);
+  }
+  glVertex2f(0., 1.);
+  
+  if (_s2mpi_world_size > 1) {
+    glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y2);
+  } else {
+    glTexCoord2f(1., 1.);
+  }
+  glVertex2f(1., 1.);
+  
+  if (_s2mpi_world_size > 1) {
+    glTexCoord2f(_s2mpi_canvas_x2, _s2mpi_canvas_y1);
+  } else {
+    glTexCoord2f(1., 0.);
+  }
+  glVertex2f(1., 0.);
+  glEnd();
+
+#endif
 
   glDisable(GL_TEXTURE_2D);
   glMatrixMode(GL_PROJECTION);

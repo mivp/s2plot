@@ -7870,16 +7870,20 @@ int xs2ap(float x1, float y1, float x2, float y2) {
   S2PLOT_PANEL *it = &(_s2_panels[_s2_npanels]);
 
   /* this is incorrect but only impacts S2MPI mode, fix below  */
-#if 1
-  it->x1 = _s2_scr_x1 + x1 * (_s2_scr_x2 - _s2_scr_x1);
-  it->x2 = _s2_scr_x1 + x2 * (_s2_scr_x2 - _s2_scr_x1);
-  it->y1 = _s2_scr_y1 + y1 * (_s2_scr_y2 - _s2_scr_y1);
-  it->y2 = _s2_scr_y1 + y2 * (_s2_scr_y2 - _s2_scr_y1);
-#else
-  it->x1 = x1;
-  it->x2 = x2;
-  it->y1 = y1;
-  it->y2 = y2;
+#if defined(S2MPICH)
+  if (1 || (_s2mpi_world_size > 1)) {
+    it->x1 = _s2_scr_x1 + x1 * (_s2_scr_x2 - _s2_scr_x1);
+    it->x2 = _s2_scr_x1 + x2 * (_s2_scr_x2 - _s2_scr_x1);
+    it->y1 = _s2_scr_y1 + y1 * (_s2_scr_y2 - _s2_scr_y1);
+    it->y2 = _s2_scr_y1 + y2 * (_s2_scr_y2 - _s2_scr_y1);
+  } else {
+#endif
+    it->x1 = x1;
+    it->x2 = x2;
+    it->y1 = y1;
+    it->y2 = y2;
+#if defined(S2MPICH)
+  }
 #endif
 
   it->active = 1;

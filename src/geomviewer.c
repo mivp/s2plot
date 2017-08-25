@@ -9290,6 +9290,8 @@ void drawView(char *projinfo, double camsca) {
   int dx = view[2];
   int dy = view[3];
 
+  //fprintf(stderr, "viewport in drawView is: %d %d %d %d\n", x0, y0, dx, dy);
+
   XYZ vright, camoff;
 
 #if defined(BUILDING_S2PLOT)
@@ -9433,8 +9435,8 @@ void drawView(char *projinfo, double camsca) {
 #if defined(BUILDING_S2PLOT)
     glViewport((int)(x0 + _s2_panels[spid].x1 * (float)dx),
 	       (int)(y0 + _s2_panels[spid].y1 * (float)dy),
-	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)dx),
-	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)dy));
+	       (int)((_s2_panels[spid].x2 - _s2_panels[spid].x1) * (float)(0+dx)), 
+	       (int)((_s2_panels[spid].y2 - _s2_panels[spid].y1) * (float)(0+dy)));
 #if defined(S2MPICH)
     //fprintf(stderr, "worldrank: %d, view = %d, %d, %d, %d\n", _s2mpi_world_rank, view[0],
     //	    view[1], view[2], view[3]);

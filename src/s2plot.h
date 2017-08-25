@@ -1594,6 +1594,8 @@ void pushVRMLname(char *iname);
  ***********************************************************************
  */
 
+  int s2mhsize(void);
+  int s2mhrank(void);
   void s2mhsync(void *ptr, size_t size);
 
 #if defined(S2_3D_TEXTURES)

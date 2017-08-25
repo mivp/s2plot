@@ -11509,6 +11509,22 @@ XYZ _s2priv_pmax(void) {
   return pmax;
 }
 
+int s2mhsize(void) {
+#if defined(S2MPICH)
+  return _s2mpi_world_size;
+#else
+  return -1;
+#endif
+}
+
+int s2mhrank(void) {
+#if defined(S2MPICH)
+  return _s2mpi_world_rank;
+#else
+  return -1;
+#endif
+}
+
 void s2mhsync(void *ptr, size_t size) {
 #if defined(S2MPICH)
   if (_s2mpi_world_size > 1) {

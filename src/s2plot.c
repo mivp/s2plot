@@ -648,6 +648,8 @@ _S2TEXTUREDMESH *_s2priv_addtexturedmesh(int in) {
     texmesh_base[i].texid = 0;
     texmesh_base[i].trans = 'o';
     texmesh_base[i].alpha = 1.0;
+    strcpy(texmesh_base[i].whichscreen, "");
+    strcpy(texmesh_base[i].VRMLname, "");
   }
   return texmesh_base;
 }
@@ -6491,7 +6493,7 @@ void ns2texpoly3d(XYZ *iP, XYZ *iTC, float in,
 #endif
 
 
-void ns2texmesh(int inverts, XYZ *iverts,
+int ns2texmesh(int inverts, XYZ *iverts,
 		int innorms, XYZ *inorms,
 		int invtcs, XYZ *ivtcs,
 		int infacets, int *ifacets, int *ifacets_tcs,
@@ -6530,8 +6532,8 @@ void ns2texmesh(int inverts, XYZ *iverts,
   texmesh_base->nfacets = infacets;
   texmesh_base->facets = (int *)malloc(3 * infacets * sizeof(int));
   texmesh_base->facets_vtcs = (int *)malloc(3 * infacets * sizeof(int));
-  bcopy(ifacets, texmesh->facets, 3 * infacets * sizeof(int));
-  bcopy(ifacets_tcs, texmesh->facets_vtcs, 3 * infacets * sizeof(int));
+  bcopy(ifacets, texmesh_base->facets, 3 * infacets * sizeof(int));
+  bcopy(ifacets_tcs, texmesh_base->facets_vtcs, 3 * infacets * sizeof(int));
   
   texmesh_base->texid = itexid;
   texmesh_base->trans = itrans;
@@ -6540,7 +6542,40 @@ void ns2texmesh(int inverts, XYZ *iverts,
   strncpy(texmesh_base->VRMLname, _s2_VRMLnames[_s2_currVRMLidx], MAXVRMLLEN);
   texmesh_base->VRMLname[MAXVRMLLEN-1] = '\0';
 
+  return (texmesh_base - texmesh);
 }
+
+void ns2texmesh_ref(int refmesh, int infacets, int *ifacets, int *ifacets_tcs,
+		    unsigned int itexid,
+		    char itrans,
+		    float ialpha) {
+  _S2TEXTUREDMESH *texmesh_base = _s2priv_addtexturedmesh(1);
+  if (!texmesh_base) {
+    _s2warn("ns2texmesh", "could not allocate memory for meshed texture");
+    return;
+  }
+  
+  texmesh_base->nverts = texmesh[refmesh].nverts;
+  texmesh_base->verts = texmesh[refmesh].verts;
+  texmesh_base->nnorms = texmesh[refmesh].nnorms;
+  texmesh_base->norms = texmesh[refmesh].norms;
+  texmesh_base->nvtcs = texmesh[refmesh].nvtcs;
+  texmesh_base->vtcs = texmesh[refmesh].vtcs;
+  
+  texmesh_base->nfacets = infacets;
+  texmesh_base->facets = (int *)malloc(3 * infacets * sizeof(int));
+  texmesh_base->facets_vtcs = (int *)malloc(3 * infacets * sizeof(int));
+  bcopy(ifacets, texmesh_base->facets, 3 * infacets * sizeof(int));
+  bcopy(ifacets_tcs, texmesh_base->facets_vtcs, 3 * infacets * sizeof(int));
+  
+  texmesh_base->texid = itexid;
+  texmesh_base->trans = itrans;
+  texmesh_base->alpha = ialpha;
+  strcpy(texmesh_base->whichscreen, _s2_whichscreen);
+  strncpy(texmesh_base->VRMLname, _s2_VRMLnames[_s2_currVRMLidx], MAXVRMLLEN);
+  texmesh_base->VRMLname[MAXVRMLLEN-1] = '\0';
+}
+
 
 
 

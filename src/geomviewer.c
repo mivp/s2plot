@@ -2081,6 +2081,8 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
 	glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
       }
 
+      //fprintf(stderr, "texmesh %d\n", i);
+
       if (doscreen) {
 	if (strlen(_s2_doingScreen) &&
 	    strstr(texmesh[i].whichscreen, _s2_doingScreen)) {

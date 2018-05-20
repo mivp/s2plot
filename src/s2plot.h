@@ -1610,13 +1610,17 @@ void pushVRMLname(char *iname);
   unsigned char *ss2g3dt(unsigned int itextureID, int *width, int *height, int *depth);
 #endif
 
-  void ns2texmesh(int inverts, XYZ *iverts,
-		int innorms, XYZ *inorms,
-		int invtcs, XYZ *ivtcs,
-		int infacets, int *ifacets, int *ifacets_tcs,
-		unsigned int itexid,
-		char itrans,
+  int ns2texmesh(int inverts, XYZ *iverts,
+		  int innorms, XYZ *inorms,
+		  int invtcs, XYZ *ivtcs,
+		  int infacets, int *ifacets, int *ifacets_tcs,
+		  unsigned int itexid,
+		  char itrans,
 		  float ialpha);
+  void ns2texmesh_ref(int refmesh, int infacets, int *ifacets, int *ifacets_tcs,
+		      unsigned int texid,
+		      char itrans,
+		      float ialpha);
 
   // "INTERNAL" 
   /* set debugging on or off */

@@ -47,7 +47,13 @@ void CameraHome(int mode) {
   camera.speed = 0;
   
   // Find the bounds of the geometry 
-  CalcBounds();
+  static int beenhere = 0;
+  if (!beenhere) {
+    CalcBounds();
+    beenhere = 1;
+  } else {
+    fprintf(stderr, "NOT doing CalcBounds where I used to pre 20180522\n");
+  }
   
   size = MAX((pmax.x-pmin.x),(pmax.y-pmin.y));
   size = MAX(size,(pmax.z-pmin.z));

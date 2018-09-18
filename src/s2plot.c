@@ -3244,7 +3244,8 @@ void _s2_clearGeometryList() {
   }
 #endif
 
-  if (ntexmesh) {
+  if (ntexmesh  && 0) {
+    fprintf(stderr, "CANNOT on possibility that this is same as facets\n");
     for (i = 0; i < ntexmesh; i++) {
       if (texmesh[i].verts) {
 	free(texmesh[i].verts);

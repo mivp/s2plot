@@ -324,6 +324,7 @@ typedef struct {
 // textured mesh
 #if !defined(_S2TEXTUREDMESH_STRUCT_DEFINED)
 typedef struct {
+  int reference; // if 1, many of my members simply point to another texmesh
   int nverts; // vertices
   XYZ *verts;
   int nnorms; // normals

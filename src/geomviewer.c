@@ -2081,7 +2081,7 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
 	//glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
       }
 
-      //fprintf(stderr, "texmesh %d\n", i);
+      //fprintf(stderr, "afafafa texmesh %d\n", i);
 
       if (doscreen) {
 	if (strlen(_s2_doingScreen) &&
@@ -2089,14 +2089,19 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
 	  _s2warn("MakeGeometry", "screen-meshed textures not supported");
 	}
       } else if (!strlen(texmesh[i].whichscreen)) {
+	//fprintf(stderr, "thththth texmesh %d\n", i);
 
 	glBegin(GL_TRIANGLES);
 	glColor4f(1.0, 1.0, 1.0, texmesh[i].alpha);
 	int j,k;
-	for (j = 0; j < texmesh[i].nfacets; j++) {
+	//fprintf(stderr, "ikikikik texmesh %d nfacets = %d\n", i, texmesh[i].nfacets);
+	//fprintf(stderr, "nverts = %d, nnorms = %d\n", texmesh[i].nverts, texmesh[i].nnorms);
+
+	for (j = 0; j < texmesh[i].nfacets; j+=1) {
 	  for (k = 0; k < 3; k++) {
 	    int vx = texmesh[i].facets[j*3+k];
-	    
+	    //fprintf(stderr, "%d\t", vx);
+
 	    // glNormal3f has to go onto the stack BEFORE glVertex3f !!!
 	    if (texmesh[i].nnorms == texmesh[i].nverts) {
 	      glNormal3f(texmesh[i].norms[vx].x,
@@ -2118,6 +2123,8 @@ void MakeGeometry(int doupdate, int doscreen, int eye) {
 	  }
 	}
 	glEnd();
+	//fprintf(stderr, "ssgssgssg texmesh %d\n", i);
+
       }
     }
     glDisable(GL_BLEND);

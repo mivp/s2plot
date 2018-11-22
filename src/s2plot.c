@@ -629,11 +629,13 @@ _S2TEXTUREDMESH *_s2priv_addtexturedmesh(int in) {
 					 sizeof(_S2TEXTUREDMESH));
     texmesh_base = texmesh + ntexmesh;
     ntexmesh += in;
+    //fprintf(stderr, "ntexmesh = %d\n", ntexmesh);
   }
   if (!texmesh) {
     ntexmesh = 0;
     return NULL;
   }
+  //fprintf(stderr, "pppp\n");
   int i;
   for (i = 0; i < in; i++) {
     texmesh_base[i].nverts = 0;
@@ -3244,23 +3246,33 @@ void _s2_clearGeometryList() {
   }
 #endif
 
-  if (ntexmesh  && 0) {
-    fprintf(stderr, "CANNOT on possibility that this is same as facets\n");
+  if (ntexmesh) {
     for (i = 0; i < ntexmesh; i++) {
-      if (texmesh[i].verts) {
-	free(texmesh[i].verts);
-      }
-      if (texmesh[i].norms) {
-	free(texmesh[i].norms);
-      }
-      if (texmesh[i].vtcs) {
-	free(texmesh[i].vtcs);
+      if (!texmesh[i].reference) { // this is a full texmesh and should delete the lot!
+	if (texmesh[i].verts) {
+	  free(texmesh[i].verts);
+	  texmesh[i].nverts = 0;
+	  texmesh[i].verts = NULL;
+	}
+	if (texmesh[i].norms) {
+	  free(texmesh[i].norms);
+	  texmesh[i].nnorms = 0;
+	  texmesh[i].norms = NULL;
+	}
+	if (texmesh[i].vtcs) {
+	  free(texmesh[i].vtcs);
+	  texmesh[i].nvtcs = 0;
+	  texmesh[i].vtcs = NULL;
+	}
       }
       if (texmesh[i].facets) {
-	free(texmesh[i].vtcs);
+	free(texmesh[i].facets);
+	texmesh[i].nfacets = 0;
+	texmesh[i].facets = NULL;
       }
       if (texmesh[i].facets_vtcs) {
 	free(texmesh[i].facets_vtcs);
+	texmesh[i].facets_vtcs = NULL;
       }
     }
     free(texmesh);
@@ -6504,11 +6516,21 @@ int ns2texmesh(int inverts, XYZ *iverts,
   _S2TEXTUREDMESH *texmesh_base = _s2priv_addtexturedmesh(1);
   if (!texmesh_base) {
     _s2warn("ns2texmesh", "could not allocate memory for meshed texture");
-    return;
+    return -1;
   }
+
+  // this is NOT a reference - can be fully deleted - ALTHOUGH no reference
+  // counting is done, is up to user to get this right :-)
+  texmesh_base->reference = 0;
   
+  //fprintf(stderr, "AAAAA, texmesh_base = %lld\n", (long long)texmesh_base);
+
   texmesh_base->nverts = inverts;
   texmesh_base->verts = (XYZ *)malloc(inverts * sizeof(XYZ));
+
+  //fprintf(stderr, "A11111\n");
+  //fprintf(stderr, "inverts = %d, verts = %lld\n", texmesh_base->nverts, (long long)texmesh_base->verts);
+
   int i;
   for (i = 0; i < inverts; i++) {
     // was commented and worked but scaling in PDF odd - definitely should use S2WORLD2DEVICE
@@ -6516,6 +6538,8 @@ int ns2texmesh(int inverts, XYZ *iverts,
     texmesh_base->verts[i].y = /*iverts[i].y;*/ _S2WORLD2DEVICE(iverts[i].y, _S2YAX);
     texmesh_base->verts[i].z = /*iverts[i].z;*/ _S2WORLD2DEVICE(iverts[i].z, _S2ZAX);
   }
+
+  //fprintf(stderr, "BBBB\n");
 
   texmesh_base->nnorms = innorms;
   texmesh_base->norms = (XYZ *)malloc(innorms * sizeof(XYZ));
@@ -6530,6 +6554,9 @@ int ns2texmesh(int inverts, XYZ *iverts,
   texmesh_base->vtcs = (XYZ *)malloc(invtcs * sizeof(XYZ));
   bcopy(ivtcs, texmesh_base->vtcs, invtcs * sizeof(XYZ));
 
+  //fprintf(stderr, "DDD\n");
+
+  
   texmesh_base->nfacets = infacets;
   texmesh_base->facets = (int *)malloc(3 * infacets * sizeof(int));
   texmesh_base->facets_vtcs = (int *)malloc(3 * infacets * sizeof(int));
@@ -6550,12 +6577,20 @@ void ns2texmesh_ref(int refmesh, int infacets, int *ifacets, int *ifacets_tcs,
 		    unsigned int itexid,
 		    char itrans,
 		    float ialpha) {
+
   _S2TEXTUREDMESH *texmesh_base = _s2priv_addtexturedmesh(1);
   if (!texmesh_base) {
     _s2warn("ns2texmesh", "could not allocate memory for meshed texture");
     return;
   }
   
+  //fprintf(stderr, "in ns2texmesh_ref, refmesh = %d, nverts = %d\n", refmesh, texmesh_base->nverts);
+  //fprintf(stderr, "xxxx\n");
+
+  // this IS a reference - cannot be fully deleted - ALTHOUGH no reference
+  // counting is done, is up to user to get this right :-)
+  texmesh_base->reference = 1;
+
   texmesh_base->nverts = texmesh[refmesh].nverts;
   texmesh_base->verts = texmesh[refmesh].verts;
   texmesh_base->nnorms = texmesh[refmesh].nnorms;
@@ -6563,18 +6598,26 @@ void ns2texmesh_ref(int refmesh, int infacets, int *ifacets, int *ifacets_tcs,
   texmesh_base->nvtcs = texmesh[refmesh].nvtcs;
   texmesh_base->vtcs = texmesh[refmesh].vtcs;
   
+
+  //fprintf(stderr, "yyyy\n");
+
   texmesh_base->nfacets = infacets;
   texmesh_base->facets = (int *)malloc(3 * infacets * sizeof(int));
   texmesh_base->facets_vtcs = (int *)malloc(3 * infacets * sizeof(int));
   bcopy(ifacets, texmesh_base->facets, 3 * infacets * sizeof(int));
   bcopy(ifacets_tcs, texmesh_base->facets_vtcs, 3 * infacets * sizeof(int));
   
+  //fprintf(stderr, "wwww\n");
+
   texmesh_base->texid = itexid;
   texmesh_base->trans = itrans;
   texmesh_base->alpha = ialpha;
   strcpy(texmesh_base->whichscreen, _s2_whichscreen);
   strncpy(texmesh_base->VRMLname, _s2_VRMLnames[_s2_currVRMLidx], MAXVRMLLEN);
   texmesh_base->VRMLname[MAXVRMLLEN-1] = '\0';
+  
+  //fprintf(stderr, "uuuu\n");
+
 }
 
 

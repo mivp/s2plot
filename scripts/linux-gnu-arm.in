@@ -1,0 +1,184 @@
+## linux-gnu-x86_64.in
+ #
+ # Copyright 2006-2012 David G. Barnes, Paul Bourke, Christopher Fluke
+ #
+ # This file is part of S2PLOT.
+ #
+ # S2PLOT is free software: you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # S2PLOT is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with S2PLOT.  If not, see <http://www.gnu.org/licenses/>. 
+ #
+ # We would appreciate it if research outcomes using S2PLOT would
+ # provide the following acknowledgement:
+ #
+ # "Three-dimensional visualisation was conducted with the S2PLOT
+ # progamming library"
+ #
+ # and a reference to
+ #
+ # D.G.Barnes, C.J.Fluke, P.D.Bourke & O.T.Parry, 2006, Publications
+ # of the Astronomical Society of Australia, 23(2), 82-93.
+ #
+ # $Id: linux-gnu-x86_64.in 5793 2012-10-09 02:06:45Z dbarnes $
+ #
+
+# MASSIVE
+# set COMPPATH="/usr/local/gcc/4.9.1/bin"
+# CAVE2
+set COMPPATH="/usr/bin"
+
+set BASEFLAGS="-D_GNU_SOURCE -I${S2PATH}/src"
+
+set COMMFLAGS="${BASEFLAGS} -O3 -ftree-vectorize -fopenmp -Wall"
+#echo " * * * DEBUG BUILD * * *"
+#set COMMFLAGS="${BASEFLAGS} -ggdb -Wall"
+
+set GCC=gcc
+set GPP=g++
+set GFC=gfortran
+
+if ($S2MPI == yes) then
+  set COMPPATH=/usr/lib64/mpi/gcc/openmpi/bin
+  set COMMFLAGS="${COMMFLAGS} -DS2MPICH"
+  set GCC=mpicc
+  set GPP=mpicxx
+  set GFC=mpif90
+endif 
+
+set S2OSTYPE="linux"
+set FOMPPATH=${COMPPATH}
+set S2COMPILER="${COMPPATH}/${GCC} -c ${COMMFLAGS}"
+set S2CCMPILER="${COMPPATH}/${GPP} -c ${COMMFLAGS}"
+set S2FOMPILER="${FOMPPATH}/${GFC} -c ${COMMFLAGS}"
+set S2CLINKER="${COMPPATH}/${GCC} ${COMMFLAGS}"
+set S2CCINKER="${COMPPATH}/${GPP} ${COMMFLAGS}"
+set S2FLINKER="${FOMPPATH}/${GFC} ${COMMFLAGS}"
+set S2FTDIR="/usr"
+set S2HARUDIR="/usr/local/libharu/2.3.0"
+
+
+set S2LBITS="64"
+#set fext="f90"
+
+set S2COMPILER="${S2COMPILER} -DS2LINUX -DS2USEARRAYS"
+set S2COMPILER="${S2COMPILER} -DS2_3D_TEXTURES"
+
+set S2MODCMPLR="${COMPPATH}/${GCC} -c -I${S2PATH}/src -DBUILDING_S2PLOT -DS2LINUX ${COMMFLAGS} -fPIC"
+set S2MODMAKER="${S2CLINKER} -shared"
+
+if ($S2SHARED == yes) then
+
+  set S2ARBLIBEXT="so"
+  set S2ARBLIBCTR='${COMPPATH}/${GCC} -shared -Wl,-soname,${S2ARBLIBNAME} -o ${S2ARBLIBNAME}'
+
+    set S2LIBCOMPILER="${S2COMPILER} -fPIC"
+    set S2LIBNAME="libs2plot.so"
+    set S2LIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2LIBNAME} -o ${S2LIBNAME}"
+
+    set S2GLUTWINNAME="libs2winglut.so"
+    set S2GLUTWINLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2GLUTWINNAME} -o ${S2GLUTWINNAME}"
+
+    set S2MESHSTUBNAME="libs2meshstub.so"
+    set S2MESHSTUBLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2MESHSTUBNAME} -o ${S2MESHSTUBNAME}"
+
+    set S2FREEMESHNAME="libs2freemesh.so"
+    set S2FREEMESHLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2FREEMESHNAME} -o ${S2FREEMESHNAME}"
+
+    set S2LOCKEDMESHNAME="libs2lockedmesh.so"
+    set S2LOCKEDMESHLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2LOCKEDMESHNAME} -o ${S2LOCKEDMESHNAME}"
+
+    set S2DISPSTUBNAME="libs2dispstub.so"
+    set S2DISPSTUBLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2DISPSTUBNAME} -o ${S2DISPSTUBNAME}"
+    set S2DISPFGNAME="libs2dispfg.so"
+    set S2DISPFGLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2DISPFGNAME} -o ${S2DISPFGNAME}"
+
+    set S2FTNAME="libs2freetype.so"
+    set S2FTLIBCTR="${COMPPATH}/${GCC} -shared -Wl,-soname,${S2FTNAME} -o ${S2FTNAME}"
+
+    set S2LIBINDEX=":"
+
+else
+
+  set S2ARBLIBEXT="a"
+  set S2ARBLIBCTR='ar ruc ${S2ARBLIBNAME}'
+
+  set S2LIBCOMPILER="${S2COMPILER} -fPIC"
+  set S2LIBNAME="libs2plot.a"
+  set S2LIBCTR="ar ruc ${S2LIBNAME}"
+
+  set S2GLUTWINNAME="libs2winglut.a"
+  set S2GLUTWINLIBCTR="ar ruc ${S2GLUTWINNAME}"
+
+  set S2MESHSTUBNAME="libs2meshstub.a"
+  set S2MESHSTUBLIBCTR="ar ruc ${S2MESHSTUBNAME}"
+  set S2FREEMESHNAME="libs2freemesh.a"
+  set S2FREEMESHLIBCTR="ar ruc ${S2FREEMESHNAME}"
+  set S2LOCKEDMESHNAME="libs2lockedmesh.a"
+  set S2LOCKEDMESHLIBCTR="ar ruc ${S2LOCKEDMESHNAME}"
+
+  set S2DISPSTUBNAME="libs2dispstub.a"
+  set S2DISPSTUBLIBCTR="ar ruc ${S2DISPSTUBNAME}"
+  set S2DISPFGNAME="libs2dispfg.a"
+  set S2DISPFGLIBCTR="ar ruc ${S2DISPFGNAME}"
+
+  set S2FTNAME="libs2freetype.a"
+  set S2FTLIBCTR="ar ruc ${S2FTNAME}"
+
+  set S2LIBINDEX="ranlib"
+
+endif
+
+set SWLINKS=""
+if ($S2SHARED == yes) then
+  set MLLINKS="-ls2meshstub"
+  if ($S2MESHLIB == free) then
+    set MLLINKS="-ls2freemesh"
+  else if ($S2MESHLIB == locked) then
+    set MLLINKS="-ls2lockedmesh -lmapFile"
+  endif
+  if ($S2WINLIB == glut) then
+    set SWLINKS="-ls2winglut"
+  endif
+
+else
+  set MLLINKS="${S2PATH}/${S2ARCH}/libs2meshstub.a"
+  if ($S2MESHLIB == free) then
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2freemesh.a"
+  else if ($S2MESHLIB == locked) then
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2lockedmesh -lmapFile"
+  endif
+  if ($S2WINLIB == glut) then
+    set SWLINKS="${S2PATH}/${S2ARCH}/libs2winglut.a"
+  endif
+
+endif
+
+# this is MLLINKS but without the dispfg/dispstub stuff (for s2view)
+set MLPLINKS="${MLLINKS}"
+
+set GLLINKS="-lglut -lGLU -lGL"
+    
+if ($S2FREEGLUT == yes) then
+  if ($S2SHARED == yes) then
+    set MLLINKS="-ls2dispfg ${MLLINKS}"
+  else
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2dispfg.a ${MLLINKS}"
+  endif
+else
+  if ($S2SHARED == yes) then
+    set MLLINKS="-ls2dispstub ${MLLINKS}"
+  else
+    set MLLINKS="${S2PATH}/${S2ARCH}/libs2dispstub.a ${MLLINKS}"
+  endif
+endif
+set XLINKPATH="-Wl,-rpath,${S2PATH}/${S2KERNEL} -Wl,-export-dynamic -lpthread"
+
